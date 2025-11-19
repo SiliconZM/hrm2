@@ -4,7 +4,7 @@
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">HRManagement.Web</a>
+        <a class="navbar-brand" href="">HR Management System</a>
     </div>
 </div>
 
@@ -14,27 +14,90 @@
     <nav class="nav flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
             </NavLink>
         </div>
 
+        <hr class="d-md-none" />
+
+        <!-- Employee Management -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            <NavLink class="nav-link" href="employees" Match="NavLinkMatch.Prefix">
+                <span class="bi bi-people-fill" aria-hidden="true"></span> Employees
             </NavLink>
         </div>
 
+        <!-- Recruitment Management -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            <NavLink class="nav-link" href="recruitment/job-postings" Match="NavLinkMatch.Prefix">
+                <span class="bi bi-briefcase-fill" aria-hidden="true"></span> Recruitment
+            </NavLink>
+        </div>
+        <div class="nav-item px-3 ms-4">
+            <NavLink class="nav-link" href="recruitment/job-postings">
+                <span class="bi bi-file-earmark-text" aria-hidden="true"></span> Job Postings
+            </NavLink>
+        </div>
+        <div class="nav-item px-3 ms-4">
+            <NavLink class="nav-link" href="recruitment/candidates">
+                <span class="bi bi-person-check" aria-hidden="true"></span> Candidates
             </NavLink>
         </div>
 
+        <!-- Performance Management -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="auth">
-                <span class="bi bi-lock-nav-menu" aria-hidden="true"></span> Auth Required
+            <NavLink class="nav-link" href="performance/evaluations" Match="NavLinkMatch.Prefix">
+                <span class="bi bi-bar-chart-fill" aria-hidden="true"></span> Performance
             </NavLink>
         </div>
+        <div class="nav-item px-3 ms-4">
+            <NavLink class="nav-link" href="performance/evaluations">
+                <span class="bi bi-clipboard-check" aria-hidden="true"></span> Evaluations
+            </NavLink>
+        </div>
+        <div class="nav-item px-3 ms-4">
+            <NavLink class="nav-link" href="performance/goals">
+                <span class="bi bi-target" aria-hidden="true"></span> Goals
+            </NavLink>
+        </div>
+
+        <!-- Skills Management -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="skills/skills-list" Match="NavLinkMatch.Prefix">
+                <span class="bi bi-lightning-charge-fill" aria-hidden="true"></span> Skills
+            </NavLink>
+        </div>
+
+        <!-- Contracts Management -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="contracts/contracts-list" Match="NavLinkMatch.Prefix">
+                <span class="bi bi-file-contract" aria-hidden="true"></span> Contracts
+            </NavLink>
+        </div>
+
+        <!-- Leave Management -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="leave/leave-requests" Match="NavLinkMatch.Prefix">
+                <span class="bi bi-calendar-check-fill" aria-hidden="true"></span> Leave Management
+            </NavLink>
+        </div>
+        <div class="nav-item px-3 ms-4">
+            <NavLink class="nav-link" href="leave/leave-types">
+                <span class="bi bi-tags-fill" aria-hidden="true"></span> Leave Types
+            </NavLink>
+        </div>
+        <div class="nav-item px-3 ms-4">
+            <NavLink class="nav-link" href="leave/leave-requests">
+                <span class="bi bi-calendar-event" aria-hidden="true"></span> Leave Requests
+            </NavLink>
+        </div>
+        <div class="nav-item px-3 ms-4">
+            <NavLink class="nav-link" href="leave/leave-balances">
+                <span class="bi bi-calculator" aria-hidden="true"></span> Leave Balances
+            </NavLink>
+        </div>
+
+        <hr class="d-md-none" />
 
         <AuthorizeView>
             <Authorized>

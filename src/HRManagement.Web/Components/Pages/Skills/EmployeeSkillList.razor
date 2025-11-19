@@ -1,0 +1,198 @@
+@page "/skills/employee-skills/{EmployeeId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject ISkillsService SkillsService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Employee Skills</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>Employee Skills</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="/skills/add-skill/@EmployeeId" class="btn btn-primary">
+                <span class="oi oi-plus"></span> Add Skill
+            </a>
+            <button class="btn btn-secondary" @onclick="GoBack">
+                Back to Employees
+            </button>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading employee skills...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else if (employeeSkills != null && employeeSkills.Items.Any())
+    {
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Skill</th>
+                            <th>Proficiency</th>
+                            <th>Years Experience</th>
+                            <th>Primary</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var skill in employeeSkills.Items)
+                        {
+                            <tr>
+                                <td><strong>@skill.SkillName</strong></td>
+                                <td>
+                                    <span class="badge" style="background-color: @GetProficiencyColor(skill.ProficiencyLevel)">
+                                        @skill.ProficiencyLevel
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (skill.YearsOfExperience.HasValue)
+                                    {
+                                        <span>@skill.YearsOfExperience years</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (skill.IsPrimarySkill)
+                                    {
+                                        <span class="badge bg-success">Primary</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-dark">Secondary</span>
+                                    }
+                                </td>
+                                <td>@(skill.Notes ?? "-")</td>
+                                <td>
+                                    <a href="/skills/skill-edit/@skill.EmployeeSkillId" class="btn btn-sm btn-warning">Edit</a>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteSkill(skill.EmployeeSkillId)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <nav aria-label="Page navigation" class="mt-3">
+                    <ul class="pagination">
+                        @if (employeeSkills.HasPreviousPage)
+                        {
+                            <li class="page-item">
+                                <button class="page-link" @onclick="() => LoadPage(employeeSkills.PageNumber - 1)">
+                                    Previous
+                                </button>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                        }
+
+                        <li class="page-item">
+                            <span class="page-link">Page @employeeSkills.PageNumber of @employeeSkills.TotalPages</span>
+                        </li>
+
+                        @if (employeeSkills.HasNextPage)
+                        {
+                            <li class="page-item">
+                                <button class="page-link" @onclick="() => LoadPage(employeeSkills.PageNumber + 1)">
+                                    Next
+                                </button>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">No skills assigned to this employee.</div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long EmployeeId { get; set; }
+
+    private PagedResponse<EmployeeSkillDto>? employeeSkills;
+    private bool loading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPage(1);
+    }
+
+    private async Task LoadPage(int pageNumber)
+    {
+        try
+        {
+            loading = true;
+            error = null;
+            employeeSkills = await SkillsService.GetEmployeeSkillsAsync(EmployeeId, pageNumber, 10);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task DeleteSkill(long employeeSkillId)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Are you sure you want to remove this skill?"))
+        {
+            try
+            {
+                await SkillsService.RemoveEmployeeSkillAsync(employeeSkillId);
+                await LoadPage(1);
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+        }
+    }
+
+    private string GetProficiencyColor(string proficiency) => proficiency switch
+    {
+        "Beginner" => "#ffc107",
+        "Intermediate" => "#17a2b8",
+        "Advanced" => "#28a745",
+        "Expert" => "#6f42c1",
+        _ => "#6c757d"
+    };
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/employees");
+    }
+
+    [Inject]
+    private IJSRuntime? JS { get; set; }
+}

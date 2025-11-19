@@ -1,0 +1,181 @@
+@page "/leave/leave-request-create"
+@page "/leave/leave-request-edit/{LeaveRequestId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject ILeaveService LeaveService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(LeaveRequestId == 0 ? "Create Leave Request" : "Edit Leave Request")</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>@(LeaveRequestId == 0 ? "New Leave Request" : "Edit Leave Request")</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-secondary" @onclick="GoBack">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading leave request...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="employeeId" class="form-label">Employee *</label>
+                            <input type="number" class="form-control" id="employeeId"
+                                   @bind="request.EmployeeId" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="leaveTypeId" class="form-label">Leave Type *</label>
+                            <input type="number" class="form-control" id="leaveTypeId"
+                                   @bind="request.LeaveTypeId" required />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="startDate" class="form-label">Start Date *</label>
+                            <input type="date" class="form-control" id="startDate"
+                                   @bind="startDate" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="endDate" class="form-label">End Date *</label>
+                            <input type="date" class="form-control" id="endDate"
+                                   @bind="endDate" required />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="daysRequested" class="form-label">Days Requested *</label>
+                            <input type="number" class="form-control" id="daysRequested" step="0.5"
+                                   @bind="request.DaysRequested" required min="0" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reasonForLeave" class="form-label">Reason for Leave</label>
+                        <textarea class="form-control" id="reasonForLeave" rows="3"
+                                  @bind="request.ReasonForLeave"></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@submitting">
+                            @if (submitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <span>Save Leave Request</span>
+                            }
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long LeaveRequestId { get; set; }
+
+    private CreateLeaveRequestRequest request = new();
+    private UpdateLeaveRequestRequest updateRequest = new() { Status = "Pending" };
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+    private DateTime startDate = DateTime.Today;
+    private DateTime endDate = DateTime.Today.AddDays(1);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (LeaveRequestId > 0)
+        {
+            try
+            {
+                loading = true;
+                var leaveRequest = await LeaveService.GetLeaveRequestByIdAsync(LeaveRequestId);
+                request.EmployeeId = leaveRequest.EmployeeId;
+                request.LeaveTypeId = leaveRequest.LeaveTypeId;
+                request.DaysRequested = leaveRequest.DaysRequested;
+                request.ReasonForLeave = leaveRequest.ReasonForLeave;
+                startDate = leaveRequest.StartDate;
+                endDate = leaveRequest.EndDate;
+
+                updateRequest.LeaveTypeId = leaveRequest.LeaveTypeId;
+                updateRequest.DaysRequested = leaveRequest.DaysRequested;
+                updateRequest.ReasonForLeave = leaveRequest.ReasonForLeave;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            request.StartDate = startDate;
+            request.EndDate = endDate;
+            updateRequest.StartDate = request.StartDate;
+            updateRequest.EndDate = request.EndDate;
+
+            if (LeaveRequestId == 0)
+            {
+                await LeaveService.CreateLeaveRequestAsync(request);
+            }
+            else
+            {
+                updateRequest.LeaveTypeId = request.LeaveTypeId;
+                updateRequest.DaysRequested = request.DaysRequested;
+                updateRequest.ReasonForLeave = request.ReasonForLeave;
+                await LeaveService.UpdateLeaveRequestAsync(LeaveRequestId, updateRequest);
+            }
+
+            NavigationManager.NavigateTo("/leave/leave-requests");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/leave/leave-requests");
+    }
+}

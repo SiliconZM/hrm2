@@ -1,0 +1,213 @@
+@page "/performance/evaluations/create"
+@page "/performance/evaluations/edit/{EvaluationId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IPerformanceService PerformanceService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(EvaluationId == 0 ? "Create Evaluation" : "Edit Evaluation")</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>@(EvaluationId == 0 ? "New Performance Evaluation" : "Edit Performance Evaluation")</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-secondary" @onclick="GoBack">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading evaluation...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="employeeId" class="form-label">Employee *</label>
+                            <input type="number" class="form-control" id="employeeId"
+                                   @bind="request.EmployeeId" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="evaluatorId" class="form-label">Evaluator</label>
+                            <input type="number" class="form-control" id="evaluatorId"
+                                   @bind="request.EvaluatorId" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="evaluationType" class="form-label">Evaluation Type *</label>
+                            <select class="form-select" id="evaluationType" @bind="request.EvaluationType" required>
+                                <option value="Annual">Annual</option>
+                                <option value="Half-yearly">Half-yearly</option>
+                                <option value="Quarterly">Quarterly</option>
+                                <option value="Project">Project</option>
+                                <option value="360-Degree">360-Degree</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="startDate" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="startDate"
+                                   @bind="startDate" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="endDate" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="endDate"
+                                   @bind="endDate" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="overallRating" class="form-label">Overall Rating (1-5)</label>
+                            <input type="number" class="form-control" id="overallRating"
+                                   @bind="updateRequest.OverallRating" step="0.5" min="1" max="5" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="comments" class="form-label">Comments</label>
+                        <textarea class="form-control" id="comments" rows="3"
+                                  @bind="updateRequest.Comments"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="strengths" class="form-label">Strength Areas</label>
+                            <textarea class="form-control" id="strengths" rows="3"
+                                      @bind="updateRequest.StrengthAreas"></textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="improvements" class="form-label">Improvement Areas</label>
+                            <textarea class="form-control" id="improvements" rows="3"
+                                      @bind="updateRequest.ImprovementAreas"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" @bind="updateRequest.Status">
+                            <option value="Draft">Draft</option>
+                            <option value="Submitted">Submitted</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Acknowledged">Acknowledged</option>
+                        </select>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@submitting">
+                            @if (submitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <span>Save Evaluation</span>
+                            }
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long EvaluationId { get; set; }
+
+    private CreateEvaluationRequest request = new();
+    private UpdateEvaluationRequest updateRequest = new();
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+    private DateTime? startDate;
+    private DateTime? endDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (EvaluationId > 0)
+        {
+            try
+            {
+                loading = true;
+                var eval = await PerformanceService.GetEvaluationByIdAsync(EvaluationId);
+                request.EmployeeId = eval.EmployeeId;
+                request.EvaluatorId = eval.EvaluatorId;
+                request.EvaluationType = eval.EvaluationType;
+                startDate = eval.StartDate;
+                endDate = eval.EndDate;
+
+                updateRequest.EvaluationType = eval.EvaluationType;
+                updateRequest.OverallRating = eval.OverallRating;
+                updateRequest.Comments = eval.Comments;
+                updateRequest.StrengthAreas = eval.StrengthAreas;
+                updateRequest.ImprovementAreas = eval.ImprovementAreas;
+                updateRequest.Status = eval.Status;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            request.StartDate = startDate;
+            request.EndDate = endDate;
+            updateRequest.StartDate = request.StartDate;
+            updateRequest.EndDate = request.EndDate;
+
+            if (EvaluationId == 0)
+            {
+                await PerformanceService.CreateEvaluationAsync(request);
+            }
+            else
+            {
+                await PerformanceService.UpdateEvaluationAsync(EvaluationId, updateRequest);
+            }
+
+            NavigationManager.NavigateTo("/performance/evaluations");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/performance/evaluations");
+    }
+}

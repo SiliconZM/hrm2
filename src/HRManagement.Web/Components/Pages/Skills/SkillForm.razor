@@ -1,0 +1,167 @@
+@page "/skills/skills-create"
+@page "/skills/skills-edit/{SkillId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject ISkillsService SkillsService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(SkillId == 0 ? "Create Skill" : "Edit Skill")</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>@(SkillId == 0 ? "New Skill" : "Edit Skill")</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-secondary" @onclick="GoBack">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading skill...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    <div class="mb-3">
+                        <label for="skillName" class="form-label">Skill Name *</label>
+                        <input type="text" class="form-control" id="skillName"
+                               @bind="request.SkillName" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Category</label>
+                        <select class="form-select" id="category" @bind="request.Category">
+                            <option value="">&ndash; Select Category &ndash;</option>
+                            <option value="Technical">Technical</option>
+                            <option value="Soft">Soft Skills</option>
+                            <option value="Management">Management</option>
+                            <option value="Language">Language</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="4"
+                                  @bind="request.Description"></textarea>
+                    </div>
+
+                    @if (SkillId > 0)
+                    {
+                        <div class="mb-3">
+                            <label for="isActive" class="form-check-label">
+                                <input type="checkbox" class="form-check-input" id="isActive"
+                                       @bind="updateRequest.IsActive" />
+                                Active
+                            </label>
+                        </div>
+                    }
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@submitting">
+                            @if (submitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <span>Save Skill</span>
+                            }
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long SkillId { get; set; }
+
+    private CreateSkillRequest request = new() { OrganizationId = 1 };
+    private UpdateSkillRequest updateRequest = new() { IsActive = true };
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (SkillId > 0)
+        {
+            try
+            {
+                loading = true;
+                var skill = await SkillsService.GetSkillByIdAsync(SkillId);
+                request.SkillName = skill.SkillName;
+                request.Category = skill.Category;
+                request.Description = skill.Description;
+
+                updateRequest.SkillName = skill.SkillName;
+                updateRequest.Category = skill.Category;
+                updateRequest.Description = skill.Description;
+                updateRequest.IsActive = skill.IsActive;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            if (SkillId == 0)
+            {
+                await SkillsService.CreateSkillAsync(request);
+            }
+            else
+            {
+                updateRequest.SkillName = request.SkillName;
+                updateRequest.Category = request.Category;
+                updateRequest.Description = request.Description;
+                await SkillsService.UpdateSkillAsync(SkillId, updateRequest);
+            }
+
+            NavigationManager.NavigateTo("/skills/skills-list");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/skills/skills-list");
+    }
+}

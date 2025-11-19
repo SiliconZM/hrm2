@@ -1,0 +1,179 @@
+@page "/contracts/contracts/{ContractId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IContractsService ContractsService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Contract Details</PageTitle>
+
+<div class="container-fluid mt-4">
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading contract...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else if (contract != null)
+    {
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h2>@contract.EmployeeName - @contract.ContractType</h2>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="/contracts/contracts-edit/@ContractId" class="btn btn-warning">
+                    <span class="oi oi-pencil"></span> Edit
+                </a>
+                <button class="btn btn-secondary" @onclick="GoBack">
+                    Back to Contracts
+                </button>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <span class="badge @GetStatusColor(contract.Status)">
+                    @contract.Status
+                </span>
+                @if (contract.IsExpired)
+                {
+                    <span class="badge bg-danger ms-2">Expired</span>
+                }
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Employee</h6>
+                        <p><strong>@contract.EmployeeName</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Contract Type</h6>
+                        <p>@contract.ContractType</p>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Start Date</h6>
+                        <p>@contract.StartDate.ToLongDateString()</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">End Date</h6>
+                        <p>@(contract.EndDate.HasValue ? contract.EndDate.Value.ToLongDateString() : "Indefinite")</p>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(contract.FileName) || !string.IsNullOrEmpty(contract.FileUrl))
+                {
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">File Name</h6>
+                            <p>@(contract.FileName ?? "N/A")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">File URL</h6>
+                            @if (!string.IsNullOrEmpty(contract.FileUrl))
+                            {
+                                <p><a href="@contract.FileUrl" target="_blank">View Document</a></p>
+                            }
+                            else
+                            {
+                                <p>N/A</p>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(contract.Terms))
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Terms & Conditions</h5>
+                </div>
+                <div class="card-body">
+                    <p>@contract.Terms</p>
+                </div>
+            </div>
+        }
+
+        @if (contract.SignedDate.HasValue || !string.IsNullOrEmpty(contract.SignedBy))
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Signature Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Signed By</h6>
+                            <p>@(contract.SignedBy ?? "N/A")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Signed Date</h6>
+                            <p>@(contract.SignedDate?.ToLongDateString() ?? "Not Signed")</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="row">
+            <div class="col-md-6">
+                <p class="text-muted small">Created: @contract.CreatedAt.ToString("g")</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <p class="text-muted small">Last Updated: @contract.UpdatedAt.ToString("g")</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">Contract not found.</div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long ContractId { get; set; }
+
+    private ContractDto? contract;
+    private bool loading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            loading = true;
+            contract = await ContractsService.GetContractByIdAsync(ContractId);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string GetStatusColor(string status) => status switch
+    {
+        "Draft" => "bg-warning",
+        "Signed" => "bg-success",
+        "Expired" => "bg-danger",
+        "Renewed" => "bg-info",
+        "Terminated" => "bg-secondary",
+        _ => "bg-info"
+    };
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/contracts/contracts-list");
+    }
+}

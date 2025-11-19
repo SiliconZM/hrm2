@@ -1,0 +1,162 @@
+@page "/leave/leave-requests"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject ILeaveService LeaveService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Leave Requests</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Leave Requests</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="/leave/leave-request-create" class="btn btn-primary">
+                <span class="oi oi-plus"></span> New Leave Request
+            </a>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading leave requests...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else if (leaveRequests != null && leaveRequests.Items.Any())
+    {
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Leave Type</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Days</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var leaveRequest in leaveRequests.Items)
+                        {
+                            <tr>
+                                <td><strong>@leaveRequest.EmployeeName</strong></td>
+                                <td>@leaveRequest.LeaveTypeName</td>
+                                <td>@leaveRequest.StartDate.ToShortDateString()</td>
+                                <td>@leaveRequest.EndDate.ToShortDateString()</td>
+                                <td>@leaveRequest.DaysRequested.ToString("0.0")</td>
+                                <td>
+                                    <span class="badge @GetStatusColor(leaveRequest.Status)">
+                                        @leaveRequest.Status
+                                    </span>
+                                </td>
+                                <td>@leaveRequest.CreatedAt.ToShortDateString()</td>
+                                <td>
+                                    <a href="/leave/leave-request/@leaveRequest.LeaveRequestId" class="btn btn-sm btn-info">
+                                        <span class="oi oi-eye"></span>
+                                    </a>
+                                    @if (leaveRequest.Status == "Pending")
+                                    {
+                                        <a href="/leave/leave-request-edit/@leaveRequest.LeaveRequestId" class="btn btn-sm btn-warning">
+                                            <span class="oi oi-pencil"></span>
+                                        </a>
+                                    }
+                                    <button @onclick="() => DeleteLeaveRequest(leaveRequest.LeaveRequestId)" class="btn btn-sm btn-danger">
+                                        <span class="oi oi-trash"></span>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (leaveRequests.TotalCount > pageSize)
+        {
+            <nav aria-label="Page navigation">
+                <ul class="pagination mt-3">
+                    @for (int i = 1; i <= (leaveRequests.TotalCount + pageSize - 1) / pageSize; i++)
+                    {
+                        <li class="page-item @(currentPage == i ? "active" : "")">
+                            <button class="page-link" @onclick="() => LoadPage(i)">@i</button>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        }
+    }
+    else
+    {
+        <div class="alert alert-warning">No leave requests found.</div>
+    }
+</div>
+
+@code {
+    private PagedResponse<LeaveRequestDto>? leaveRequests;
+    private bool loading = true;
+    private string? error;
+    private int currentPage = 1;
+    private int pageSize = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPage(1);
+    }
+
+    private async Task LoadPage(int pageNumber)
+    {
+        try
+        {
+            loading = true;
+            error = null;
+            currentPage = pageNumber;
+            leaveRequests = await LeaveService.GetAllLeaveRequestsAsync(1, pageNumber, pageSize);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task DeleteLeaveRequest(long leaveRequestId)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this leave request?"))
+        {
+            try
+            {
+                await LeaveService.DeleteLeaveRequestAsync(leaveRequestId);
+                await LoadPage(currentPage);
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+        }
+    }
+
+    private string GetStatusColor(string status) => status switch
+    {
+        "Pending" => "bg-warning",
+        "Approved" => "bg-success",
+        "Rejected" => "bg-danger",
+        "Cancelled" => "bg-secondary",
+        _ => "bg-info"
+    };
+
+    [Inject]
+    private IJSRuntime? JSRuntime { get; set; }
+}

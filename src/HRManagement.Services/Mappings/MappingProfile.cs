@@ -34,6 +34,32 @@ namespace HRManagement.Services.Mappings
 
             // Organization mappings
             CreateMap<Organization, OrganizationDto>();
+
+            // Leave Type mappings
+            CreateMap<LeaveType, LeaveTypeDto>();
+            CreateMap<CreateLeaveTypeRequest, LeaveType>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore());
+
+            // Leave Request mappings
+            CreateMap<LeaveRequest, LeaveRequestDto>()
+                .ForMember(d => d.EmployeeName, o => o.MapFrom(s => s.Employee != null ? s.Employee.FullName : null))
+                .ForMember(d => d.LeaveTypeName, o => o.MapFrom(s => s.LeaveType != null ? s.LeaveType.LeaveTypeName : null))
+                .ForMember(d => d.ApprovedByName, o => o.MapFrom(s => s.ApprovedByEmployee != null ? s.ApprovedByEmployee.FullName : null));
+
+            CreateMap<CreateLeaveRequestRequest, LeaveRequest>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore());
+
+            // Leave Balance mappings
+            CreateMap<LeaveBalance, LeaveBalanceDto>()
+                .ForMember(d => d.EmployeeName, o => o.MapFrom(s => s.Employee != null ? s.Employee.FullName : null))
+                .ForMember(d => d.LeaveTypeName, o => o.MapFrom(s => s.LeaveType != null ? s.LeaveType.LeaveTypeName : null))
+                .ForMember(d => d.AvailableDays, o => o.MapFrom(s => s.TotalDays + s.CarryOverDays - s.UsedDays));
+
+            CreateMap<CreateLeaveBalanceRequest, LeaveBalance>()
+                .ForMember(d => d.UpdatedAt, o => o.Ignore());
+
         }
     }
 }

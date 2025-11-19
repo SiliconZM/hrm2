@@ -1,0 +1,178 @@
+@page "/contracts/contracts-list"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IContractsService ContractsService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Contracts</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>Employment Contracts</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="/contracts/contracts-create" class="btn btn-primary">
+                <span class="oi oi-plus"></span> New Contract
+            </a>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading contracts...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else if (contracts != null && contracts.Items.Any())
+    {
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Type</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Status</th>
+                            <th>Signed</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var contract in contracts.Items)
+                        {
+                            <tr>
+                                <td><strong>@contract.EmployeeName</strong></td>
+                                <td><span class="badge bg-info">@contract.ContractType</span></td>
+                                <td><small>@contract.StartDate.ToShortDateString()</small></td>
+                                <td>
+                                    <small>
+                                        @if (contract.EndDate.HasValue)
+                                        {
+                                            @contract.EndDate.Value.ToShortDateString()
+                                            @if (contract.IsExpired)
+                                            {
+                                                <span class="badge bg-danger ms-2">Expired</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Ongoing</span>
+                                        }
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge" style="background-color: @GetStatusColor(contract.Status)">
+                                        @contract.Status
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (contract.SignedDate.HasValue)
+                                    {
+                                        <small>@contract.SignedDate.Value.ToShortDateString()</small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">Not signed</small>
+                                    }
+                                </td>
+                                <td>
+                                    <a href="/contracts/contracts/@contract.ContractId" class="btn btn-sm btn-info">View</a>
+                                    <a href="/contracts/contracts-edit/@contract.ContractId" class="btn btn-sm btn-warning">Edit</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <nav aria-label="Page navigation" class="mt-3">
+                    <ul class="pagination">
+                        @if (contracts.HasPreviousPage)
+                        {
+                            <li class="page-item">
+                                <button class="page-link" @onclick="() => LoadPage(contracts.PageNumber - 1)">
+                                    Previous
+                                </button>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                        }
+
+                        <li class="page-item">
+                            <span class="page-link">Page @contracts.PageNumber of @contracts.TotalPages</span>
+                        </li>
+
+                        @if (contracts.HasNextPage)
+                        {
+                            <li class="page-item">
+                                <button class="page-link" @onclick="() => LoadPage(contracts.PageNumber + 1)">
+                                    Next
+                                </button>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">No contracts found.</div>
+    }
+</div>
+
+@code {
+    private PagedResponse<ContractDto>? contracts;
+    private bool loading = true;
+    private string? error;
+    private const long OrganizationId = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPage(1);
+    }
+
+    private async Task LoadPage(int pageNumber)
+    {
+        try
+        {
+            loading = true;
+            error = null;
+            contracts = await ContractsService.GetAllContractsAsync(OrganizationId, pageNumber, 10);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string GetStatusColor(string status) => status switch
+    {
+        "Draft" => "#ffc107",
+        "Signed" => "#28a745",
+        "Expired" => "#dc3545",
+        "Renewed" => "#17a2b8",
+        "Terminated" => "#6c757d",
+        _ => "#6f42c1"
+    };
+}

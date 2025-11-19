@@ -1,0 +1,194 @@
+@page "/leave/leave-type-create"
+@page "/leave/leave-type-edit/{LeaveTypeId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject ILeaveService LeaveService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(LeaveTypeId == 0 ? "Create Leave Type" : "Edit Leave Type")</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>@(LeaveTypeId == 0 ? "New Leave Type" : "Edit Leave Type")</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-secondary" @onclick="GoBack">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading leave type...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    <div class="mb-3">
+                        <label for="leaveTypeName" class="form-label">Leave Type Name *</label>
+                        <input type="text" class="form-control" id="leaveTypeName"
+                               @bind="request.LeaveTypeName" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="3"
+                                  @bind="request.Description"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="defaultDays" class="form-label">Default Days Per Year *</label>
+                            <input type="number" class="form-control" id="defaultDays"
+                                   @bind="request.DefaultDaysPerYear" required min="0" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="maxCarryOver" class="form-label">Max Carry Over Days</label>
+                            <input type="number" class="form-control" id="maxCarryOver"
+                                   @bind="request.MaxCarryOver" min="0" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="isCarryOverAllowed" class="form-check-label">
+                                <input type="checkbox" class="form-check-input" id="isCarryOverAllowed"
+                                       @bind="request.IsCarryOverAllowed" />
+                                Allow Carry Over
+                            </label>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="requiresApproval" class="form-check-label">
+                                <input type="checkbox" class="form-check-input" id="requiresApproval"
+                                       @bind="request.RequiresApproval" />
+                                Requires Approval
+                            </label>
+                        </div>
+                    </div>
+
+                    @if (LeaveTypeId > 0)
+                    {
+                        <div class="mb-3">
+                            <label for="isActive" class="form-check-label">
+                                <input type="checkbox" class="form-check-input" id="isActive"
+                                       @bind="updateRequest.IsActive" />
+                                Active
+                            </label>
+                        </div>
+                    }
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@submitting">
+                            @if (submitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <span>Save Leave Type</span>
+                            }
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long LeaveTypeId { get; set; }
+
+    private CreateLeaveTypeRequest request = new() { OrganizationId = 1 };
+    private UpdateLeaveTypeRequest updateRequest = new() { IsActive = true };
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (LeaveTypeId > 0)
+        {
+            try
+            {
+                loading = true;
+                var leaveType = await LeaveService.GetLeaveTypeByIdAsync(LeaveTypeId);
+                request.LeaveTypeName = leaveType.LeaveTypeName;
+                request.Description = leaveType.Description;
+                request.DefaultDaysPerYear = leaveType.DefaultDaysPerYear;
+                request.IsCarryOverAllowed = leaveType.IsCarryOverAllowed;
+                request.MaxCarryOver = leaveType.MaxCarryOver;
+                request.RequiresApproval = leaveType.RequiresApproval;
+
+                updateRequest.LeaveTypeName = leaveType.LeaveTypeName;
+                updateRequest.Description = leaveType.Description;
+                updateRequest.DefaultDaysPerYear = leaveType.DefaultDaysPerYear;
+                updateRequest.IsCarryOverAllowed = leaveType.IsCarryOverAllowed;
+                updateRequest.MaxCarryOver = leaveType.MaxCarryOver;
+                updateRequest.RequiresApproval = leaveType.RequiresApproval;
+                updateRequest.IsActive = leaveType.IsActive;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            if (LeaveTypeId == 0)
+            {
+                await LeaveService.CreateLeaveTypeAsync(request);
+            }
+            else
+            {
+                updateRequest.LeaveTypeName = request.LeaveTypeName;
+                updateRequest.Description = request.Description;
+                updateRequest.DefaultDaysPerYear = request.DefaultDaysPerYear;
+                updateRequest.IsCarryOverAllowed = request.IsCarryOverAllowed;
+                updateRequest.MaxCarryOver = request.MaxCarryOver;
+                updateRequest.RequiresApproval = request.RequiresApproval;
+                await LeaveService.UpdateLeaveTypeAsync(LeaveTypeId, updateRequest);
+            }
+
+            NavigationManager.NavigateTo("/leave/leave-types");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/leave/leave-types");
+    }
+}

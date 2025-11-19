@@ -1,0 +1,171 @@
+@page "/performance/evaluations/{EvaluationId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IPerformanceService PerformanceService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Evaluation Details</PageTitle>
+
+<div class="container-fluid mt-4">
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading evaluation...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else if (evaluation != null)
+    {
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h2>@evaluation.EmployeeName - @evaluation.EvaluationType Evaluation</h2>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="/performance/evaluations/edit/@EvaluationId" class="btn btn-warning">
+                    <span class="oi oi-pencil"></span> Edit
+                </a>
+                <button class="btn btn-secondary" @onclick="GoBack">
+                    Back to List
+                </button>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <span class="badge" style="background-color: @GetStatusColor(evaluation.Status)">
+                    @evaluation.Status
+                </span>
+                <span class="badge bg-secondary ms-2">@evaluation.EvaluationType</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Employee</h6>
+                        <p><strong>@evaluation.EmployeeName</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Evaluator</h6>
+                        <p>@(evaluation.EvaluatorName ?? "Not Assigned")</p>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Period</h6>
+                        <p>
+                            @if (evaluation.StartDate.HasValue && evaluation.EndDate.HasValue)
+                            {
+                                <span>@evaluation.StartDate.Value.ToShortDateString() - @evaluation.EndDate.Value.ToShortDateString()</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Not specified</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Overall Rating</h6>
+                        <p>
+                            @if (evaluation.OverallRating.HasValue)
+                            {
+                                <strong>@evaluation.OverallRating.Value.ToString("0.0")/5</strong>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Not rated</span>
+                            }
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Strength Areas</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>@(evaluation.StrengthAreas ?? "Not specified")</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Improvement Areas</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>@(evaluation.ImprovementAreas ?? "Not specified")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Comments</h5>
+            </div>
+            <div class="card-body">
+                <p>@(evaluation.Comments ?? "No comments")</p>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <p class="text-muted small">Created: @evaluation.CreatedAt.ToString("g")</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <p class="text-muted small">Last Updated: @evaluation.UpdatedAt.ToString("g")</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">Evaluation not found.</div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long EvaluationId { get; set; }
+
+    private EvaluationDto? evaluation;
+    private bool loading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            loading = true;
+            evaluation = await PerformanceService.GetEvaluationByIdAsync(EvaluationId);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string GetStatusColor(string status) => status switch
+    {
+        "Draft" => "#ffc107",
+        "Submitted" => "#17a2b8",
+        "Approved" => "#28a745",
+        "Acknowledged" => "#6c757d",
+        _ => "#6f42c1"
+    };
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/performance/evaluations");
+    }
+}

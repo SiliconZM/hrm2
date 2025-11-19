@@ -1,0 +1,209 @@
+@page "/contracts/contracts-create"
+@page "/contracts/contracts-edit/{ContractId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IContractsService ContractsService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(ContractId == 0 ? "Create Contract" : "Edit Contract")</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>@(ContractId == 0 ? "New Contract" : "Edit Contract")</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-secondary" @onclick="GoBack">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading contract...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="employeeId" class="form-label">Employee *</label>
+                            <input type="number" class="form-control" id="employeeId"
+                                   @bind="request.EmployeeId" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="contractType" class="form-label">Contract Type *</label>
+                            <select class="form-select" id="contractType" @bind="request.ContractType" required>
+                                <option value="">&ndash; Select Type &ndash;</option>
+                                <option value="Employment Contract">Employment Contract</option>
+                                <option value="NDA">NDA</option>
+                                <option value="Offer Letter">Offer Letter</option>
+                                <option value="Severance">Severance</option>
+                                <option value="Confidentiality">Confidentiality Agreement</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="startDate" class="form-label">Start Date *</label>
+                            <input type="date" class="form-control" id="startDate"
+                                   @bind="startDate" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="endDate" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="endDate"
+                                   @bind="endDate" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="fileName" class="form-label">File Name</label>
+                            <input type="text" class="form-control" id="fileName"
+                                   @bind="request.FileName" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="fileUrl" class="form-label">File URL</label>
+                            <input type="text" class="form-control" id="fileUrl"
+                                   @bind="request.FileUrl" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="terms" class="form-label">Terms & Conditions</label>
+                        <textarea class="form-control" id="terms" rows="4"
+                                  @bind="request.Terms"></textarea>
+                    </div>
+
+                    @if (ContractId > 0)
+                    {
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <select class="form-select" id="status" @bind="updateRequest.Status">
+                                    <option value="Draft">Draft</option>
+                                    <option value="Signed">Signed</option>
+                                    <option value="Expired">Expired</option>
+                                    <option value="Renewed">Renewed</option>
+                                    <option value="Terminated">Terminated</option>
+                                </select>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@submitting">
+                            @if (submitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <span>Save Contract</span>
+                            }
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long ContractId { get; set; }
+
+    private CreateContractRequest request = new();
+    private UpdateContractRequest updateRequest = new() { Status = "Draft" };
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+    private DateTime startDate = DateTime.Today;
+    private DateTime? endDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (ContractId > 0)
+        {
+            try
+            {
+                loading = true;
+                var contract = await ContractsService.GetContractByIdAsync(ContractId);
+                request.EmployeeId = contract.EmployeeId;
+                request.ContractType = contract.ContractType;
+                request.FileName = contract.FileName;
+                request.FileUrl = contract.FileUrl;
+                request.Terms = contract.Terms;
+                startDate = contract.StartDate;
+                endDate = contract.EndDate;
+
+                updateRequest.ContractType = contract.ContractType;
+                updateRequest.FileName = contract.FileName;
+                updateRequest.FileUrl = contract.FileUrl;
+                updateRequest.Terms = contract.Terms;
+                updateRequest.Status = contract.Status;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            request.StartDate = startDate;
+            request.EndDate = endDate;
+            updateRequest.StartDate = request.StartDate;
+            updateRequest.EndDate = request.EndDate;
+
+            if (ContractId == 0)
+            {
+                await ContractsService.CreateContractAsync(request);
+            }
+            else
+            {
+                await ContractsService.UpdateContractAsync(ContractId, updateRequest);
+            }
+
+            NavigationManager.NavigateTo("/contracts/contracts-list");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/contracts/contracts-list");
+    }
+}

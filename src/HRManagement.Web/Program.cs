@@ -73,6 +73,11 @@ try
 
     // Register business services
     builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+    builder.Services.AddScoped<IRecruitmentService, RecruitmentService>();
+    builder.Services.AddScoped<IPerformanceService, PerformanceService>();
+    builder.Services.AddScoped<ISkillsService, SkillsService>();
+    builder.Services.AddScoped<IContractsService, ContractsService>();
+    builder.Services.AddScoped<ILeaveService, LeaveService>();
 
     var app = builder.Build();
 

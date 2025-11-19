@@ -1,0 +1,168 @@
+@page "/leave/leave-balance-create"
+@page "/leave/leave-balance-edit/{LeaveBalanceId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject ILeaveService LeaveService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(LeaveBalanceId == 0 ? "Create Leave Balance" : "Edit Leave Balance")</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>@(LeaveBalanceId == 0 ? "New Leave Balance" : "Edit Leave Balance")</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-secondary" @onclick="GoBack">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading leave balance...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="employeeId" class="form-label">Employee *</label>
+                            <input type="number" class="form-control" id="employeeId"
+                                   @bind="request.EmployeeId" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="leaveTypeId" class="form-label">Leave Type *</label>
+                            <input type="number" class="form-control" id="leaveTypeId"
+                                   @bind="request.LeaveTypeId" required />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="financialYear" class="form-label">Financial Year *</label>
+                            <input type="number" class="form-control" id="financialYear"
+                                   @bind="request.FinancialYear" required />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="totalDays" class="form-label">Total Days *</label>
+                            <input type="number" class="form-control" id="totalDays" step="0.5"
+                                   @bind="request.TotalDays" required min="0" />
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="usedDays" class="form-label">Used Days</label>
+                            <input type="number" class="form-control" id="usedDays" step="0.5"
+                                   @bind="updateRequest.UsedDays" min="0" />
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="carryOverDays" class="form-label">Carry Over Days</label>
+                            <input type="number" class="form-control" id="carryOverDays" step="0.5"
+                                   @bind="request.CarryOverDays" min="0" />
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@submitting">
+                            @if (submitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <span>Save Leave Balance</span>
+                            }
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long LeaveBalanceId { get; set; }
+
+    private CreateLeaveBalanceRequest request = new();
+    private UpdateLeaveBalanceRequest updateRequest = new();
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (LeaveBalanceId > 0)
+        {
+            try
+            {
+                loading = true;
+                var balance = await LeaveService.GetLeaveBalanceByIdAsync(LeaveBalanceId);
+                request.EmployeeId = balance.EmployeeId;
+                request.LeaveTypeId = balance.LeaveTypeId;
+                request.FinancialYear = balance.FinancialYear;
+                request.TotalDays = balance.TotalDays;
+                request.CarryOverDays = balance.CarryOverDays;
+                updateRequest.UsedDays = balance.UsedDays;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            if (LeaveBalanceId == 0)
+            {
+                await LeaveService.CreateLeaveBalanceAsync(request);
+            }
+            else
+            {
+                updateRequest.TotalDays = request.TotalDays;
+                updateRequest.CarryOverDays = request.CarryOverDays;
+                await LeaveService.UpdateLeaveBalanceAsync(LeaveBalanceId, updateRequest);
+            }
+
+            NavigationManager.NavigateTo("/leave/leave-balances");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/leave/leave-balances");
+    }
+}

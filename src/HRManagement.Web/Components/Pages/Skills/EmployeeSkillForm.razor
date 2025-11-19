@@ -1,0 +1,190 @@
+@page "/skills/add-skill/{EmployeeId:long}"
+@page "/skills/skill-edit/{EmployeeSkillId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject ISkillsService SkillsService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(EmployeeSkillId == 0 ? "Add Skill" : "Edit Skill")</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>@(EmployeeSkillId == 0 ? "Add Skill to Employee" : "Edit Employee Skill")</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-secondary" @onclick="GoBack">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    @if (EmployeeSkillId == 0)
+                    {
+                        <div class="mb-3">
+                            <label for="skillId" class="form-label">Skill *</label>
+                            <input type="number" class="form-control" id="skillId"
+                                   @bind="request.SkillId" required />
+                            <small class="form-text text-muted">Enter Skill ID</small>
+                        </div>
+                    }
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="proficiency" class="form-label">Proficiency Level *</label>
+                            <select class="form-select" id="proficiency" @bind="request.ProficiencyLevel" required>
+                                <option value="Beginner">Beginner</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Advanced">Advanced</option>
+                                <option value="Expert">Expert</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="yearsExp" class="form-label">Years of Experience</label>
+                            <input type="number" class="form-control" id="yearsExp"
+                                   @bind="request.YearsOfExperience" min="0" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="primarySkill" class="form-check-label">
+                            <input type="checkbox" class="form-check-input" id="primarySkill"
+                                   @bind="request.IsPrimarySkill" />
+                            Primary Skill
+                        </label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" rows="3"
+                                  @bind="request.Notes"></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@submitting">
+                            @if (submitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <span>Save Skill</span>
+                            }
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long EmployeeId { get; set; }
+
+    [Parameter]
+    public long EmployeeSkillId { get; set; }
+
+    private CreateEmployeeSkillRequest request = new() { ProficiencyLevel = "Beginner" };
+    private UpdateEmployeeSkillRequest updateRequest = new() { ProficiencyLevel = "Beginner" };
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (EmployeeSkillId > 0)
+        {
+            try
+            {
+                loading = true;
+                var skill = await SkillsService.GetEmployeeSkillByIdAsync(EmployeeSkillId);
+                request.EmployeeId = skill.EmployeeId;
+                request.SkillId = skill.SkillId;
+                request.ProficiencyLevel = skill.ProficiencyLevel;
+                request.YearsOfExperience = skill.YearsOfExperience;
+                request.IsPrimarySkill = skill.IsPrimarySkill;
+                request.Notes = skill.Notes;
+
+                updateRequest = new()
+                {
+                    ProficiencyLevel = skill.ProficiencyLevel,
+                    YearsOfExperience = skill.YearsOfExperience,
+                    IsPrimarySkill = skill.IsPrimarySkill,
+                    Notes = skill.Notes
+                };
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+        else
+        {
+            request.EmployeeId = EmployeeId;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            if (EmployeeSkillId == 0)
+            {
+                await SkillsService.AddEmployeeSkillAsync(request);
+            }
+            else
+            {
+                await SkillsService.UpdateEmployeeSkillAsync(EmployeeSkillId, updateRequest);
+            }
+
+            GoBack();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        if (EmployeeId > 0)
+        {
+            NavigationManager.NavigateTo($"/skills/employee-skills/{EmployeeId}");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/skills/skills-list");
+        }
+    }
+}

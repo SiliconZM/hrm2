@@ -1,0 +1,193 @@
+@page "/performance/goals/create"
+@page "/performance/goals/edit/{GoalId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IPerformanceService PerformanceService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(GoalId == 0 ? "Create Goal" : "Edit Goal")</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>@(GoalId == 0 ? "New Goal" : "Edit Goal")</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-secondary" @onclick="GoBack">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading goal...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="employeeId" class="form-label">Employee *</label>
+                            <input type="number" class="form-control" id="employeeId"
+                                   @bind="request.EmployeeId" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="evaluationId" class="form-label">Evaluation</label>
+                            <input type="number" class="form-control" id="evaluationId"
+                                   @bind="request.EvaluationId" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="goalTitle" class="form-label">Goal Title *</label>
+                        <input type="text" class="form-control" id="goalTitle"
+                               @bind="request.GoalTitle" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="3"
+                                  @bind="request.Description"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="targetDate" class="form-label">Target Date</label>
+                            <input type="date" class="form-control" id="targetDate"
+                                   @bind="targetDate" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="alignment" class="form-label">Alignment</label>
+                            <input type="text" class="form-control" id="alignment"
+                                   @bind="request.Alignment" placeholder="e.g., Strategic Goal 1" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" @bind="updateRequest.Status">
+                                <option value="Not Started">Not Started</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Completed">Completed</option>
+                                <option value="On Hold">On Hold</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="progress" class="form-label">Progress (%)</label>
+                            <input type="number" class="form-control" id="progress"
+                                   @bind="updateRequest.ProgressPercentage" min="0" max="100" />
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@submitting">
+                            @if (submitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <span>Save Goal</span>
+                            }
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long GoalId { get; set; }
+
+    private CreateGoalRequest request = new();
+    private UpdateGoalRequest updateRequest = new() { Status = "Not Started", ProgressPercentage = 0 };
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+    private DateTime? targetDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (GoalId > 0)
+        {
+            try
+            {
+                loading = true;
+                var goal = await PerformanceService.GetGoalByIdAsync(GoalId);
+                request.EmployeeId = goal.EmployeeId;
+                request.EvaluationId = goal.EvaluationId;
+                request.GoalTitle = goal.GoalTitle;
+                request.Description = goal.Description;
+                request.Alignment = goal.Alignment;
+                targetDate = goal.TargetDate;
+
+                updateRequest.GoalTitle = goal.GoalTitle;
+                updateRequest.Description = goal.Description;
+                updateRequest.Status = goal.Status;
+                updateRequest.ProgressPercentage = goal.ProgressPercentage;
+                updateRequest.Alignment = goal.Alignment;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            request.TargetDate = targetDate;
+            updateRequest.TargetDate = request.TargetDate;
+
+            if (GoalId == 0)
+            {
+                await PerformanceService.CreateGoalAsync(request);
+            }
+            else
+            {
+                await PerformanceService.UpdateGoalAsync(GoalId, updateRequest);
+            }
+
+            NavigationManager.NavigateTo("/performance/goals");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/performance/goals");
+    }
+}

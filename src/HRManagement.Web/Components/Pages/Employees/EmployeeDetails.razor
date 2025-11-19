@@ -1,0 +1,238 @@
+@page "/employees/{EmployeeId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IEmployeeService EmployeeService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Employee Details</PageTitle>
+
+<div class="container mt-4">
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading employee details...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else if (employee != null)
+    {
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h2>@employee.FullName</h2>
+                <p class="text-muted">Employee Code: @employee.EmployeeCode</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="/employees/edit/@employee.EmployeeId" class="btn btn-warning me-2">Edit</a>
+                <a href="/employees" class="btn btn-secondary">Back to List</a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Personal Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Full Name:</th>
+                                <td>@employee.FullName</td>
+                            </tr>
+                            <tr>
+                                <th>Email (Official):</th>
+                                <td>
+                                    <a href="mailto:@employee.EmailOfficial">@employee.EmailOfficial</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Email (Personal):</th>
+                                <td>@(string.IsNullOrEmpty(employee.EmailPersonal) ? "N/A" : employee.EmailPersonal)</td>
+                            </tr>
+                            <tr>
+                                <th>Phone:</th>
+                                <td>@(string.IsNullOrEmpty(employee.PhonePrimary) ? "N/A" : employee.PhonePrimary)</td>
+                            </tr>
+                            <tr>
+                                <th>Date of Birth:</th>
+                                <td>@(employee.DateOfBirth?.ToString("MMM dd, yyyy") ?? "N/A")</td>
+                            </tr>
+                            <tr>
+                                <th>Gender:</th>
+                                <td>@(employee.Gender?.ToString() ?? "N/A")</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Employment Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Employee Code:</th>
+                                <td>@employee.EmployeeCode</td>
+                            </tr>
+                            <tr>
+                                <th>Department:</th>
+                                <td>@(employee.DepartmentName ?? "N/A")</td>
+                            </tr>
+                            <tr>
+                                <th>Job Title:</th>
+                                <td>@(employee.JobTitleName ?? "N/A")</td>
+                            </tr>
+                            <tr>
+                                <th>Reports To:</th>
+                                <td>@(employee.ReportingManagerName ?? "N/A")</td>
+                            </tr>
+                            <tr>
+                                <th>Employment Type:</th>
+                                <td>@employee.EmploymentType</td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    <span class="badge" style="background-color: @GetStatusColor(employee.EmploymentStatus)">
+                                        @employee.EmploymentStatus
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Compensation</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Salary:</th>
+                                <td>
+                                    @if (employee.Salary.HasValue)
+                                    {
+                                        <span>@employee.Salary.Value.ToString("C")</span>
+                                    }
+                                    else
+                                    {
+                                        <span>N/A</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Frequency:</th>
+                                <td>@employee.SalaryFrequency</td>
+                            </tr>
+                            <tr>
+                                <th>Currency:</th>
+                                <td>@(employee.CurrencyCode ?? "USD")</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Important Dates</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Hire Date:</th>
+                                <td>@employee.HireDate.ToString("MMM dd, yyyy")</td>
+                            </tr>
+                            <tr>
+                                <th>Termination Date:</th>
+                                <td>@(employee.TerminationDate?.ToString("MMM dd, yyyy") ?? "Active")</td>
+                            </tr>
+                            <tr>
+                                <th>Created:</th>
+                                <td>@employee.CreatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                            </tr>
+                            <tr>
+                                <th>Updated:</th>
+                                <td>@employee.UpdatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(employee.PermanentAddress) || !string.IsNullOrEmpty(employee.CurrentAddress))
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Address Information</h5>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(employee.PermanentAddress))
+                    {
+                        <p><strong>Permanent Address:</strong><br />@employee.PermanentAddress</p>
+                    }
+                    @if (!string.IsNullOrEmpty(employee.CurrentAddress))
+                    {
+                        <p><strong>Current Address:</strong><br />@employee.CurrentAddress</p>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-warning">Employee not found.</div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long EmployeeId { get; set; }
+
+    private EmployeeDto? employee;
+    private bool loading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            employee = await EmployeeService.GetByIdAsync(EmployeeId);
+            if (employee == null)
+                error = "Employee not found";
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string GetStatusColor(string status)
+    {
+        return status switch
+        {
+            "Active" => "#28a745",
+            "Inactive" => "#6c757d",
+            "On Leave" => "#ffc107",
+            "Terminated" => "#dc3545",
+            _ => "#17a2b8"
+        };
+    }
+}

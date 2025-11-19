@@ -1,0 +1,168 @@
+@page "/leave/leave-request/{LeaveRequestId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject ILeaveService LeaveService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Leave Request Details</PageTitle>
+
+<div class="container-fluid mt-4">
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading leave request...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else if (leaveRequest != null)
+    {
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h2>Leave Request Details</h2>
+            </div>
+            <div class="col-md-4 text-end">
+                @if (leaveRequest.Status == "Pending")
+                {
+                    <a href="/leave/leave-request-edit/@LeaveRequestId" class="btn btn-warning">
+                        <span class="oi oi-pencil"></span> Edit
+                    </a>
+                }
+                <button class="btn btn-secondary" @onclick="GoBack">
+                    Back to Requests
+                </button>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <span class="badge @GetStatusColor(leaveRequest.Status)">
+                    @leaveRequest.Status
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Employee</h6>
+                        <p><strong>@leaveRequest.EmployeeName</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Leave Type</h6>
+                        <p>@leaveRequest.LeaveTypeName</p>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Start Date</h6>
+                        <p>@leaveRequest.StartDate.ToLongDateString()</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">End Date</h6>
+                        <p>@leaveRequest.EndDate.ToLongDateString()</p>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Days Requested</h6>
+                        <p>@leaveRequest.DaysRequested.ToString("0.0") days</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Created On</h6>
+                        <p>@leaveRequest.CreatedAt.ToShortDateString()</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(leaveRequest.ReasonForLeave))
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Reason for Leave</h5>
+                </div>
+                <div class="card-body">
+                    <p>@leaveRequest.ReasonForLeave</p>
+                </div>
+            </div>
+        }
+
+        @if (leaveRequest.Status != "Pending")
+        {
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Approval Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Approved By</h6>
+                            <p>@(leaveRequest.ApprovedByName ?? "N/A")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Approved Date</h6>
+                            <p>@(leaveRequest.ApprovedDate?.ToLongDateString() ?? "N/A")</p>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(leaveRequest.ApprovalComments))
+                    {
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <h6 class="text-muted">Comments</h6>
+                                <p>@leaveRequest.ApprovalComments</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-warning">Leave request not found.</div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long LeaveRequestId { get; set; }
+
+    private LeaveRequestDto? leaveRequest;
+    private bool loading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            loading = true;
+            leaveRequest = await LeaveService.GetLeaveRequestByIdAsync(LeaveRequestId);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string GetStatusColor(string status) => status switch
+    {
+        "Pending" => "bg-warning",
+        "Approved" => "bg-success",
+        "Rejected" => "bg-danger",
+        "Cancelled" => "bg-secondary",
+        _ => "bg-info"
+    };
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/leave/leave-requests");
+    }
+}

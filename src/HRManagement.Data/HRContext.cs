@@ -22,11 +22,25 @@ namespace HRManagement.Data
         public DbSet<LeaveBalance> LeaveBalances { get; set; }
         public DbSet<Attendance> Attendances { get; set; }
 
+        // DbSets for Recruitment module
+        public DbSet<JobPosting> JobPostings { get; set; }
+        public DbSet<Candidate> Candidates { get; set; }
+        public DbSet<Application> Applications { get; set; }
+
+        // DbSets for Performance Management module
+        public DbSet<Evaluation> Evaluations { get; set; }
+        public DbSet<Goal> Goals { get; set; }
+
+        // DbSets for Skills & Competencies module
+        public DbSet<Skill> Skills { get; set; }
+        public DbSet<EmployeeSkill> EmployeeSkills { get; set; }
+
+        // DbSets for Contracts module
+        public DbSet<Contract> Contracts { get; set; }
+
         // Future modules will add more DbSets here
-        // - Recruitment (JobPosting, Candidate, Application)
-        // - Performance (Evaluation, Goal)
         // - Payroll (PayrollRun, PaySlip, Salary)
-        // - Benefits, Contracts, Skills, Training, etc.
+        // - Benefits, Training, etc.
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -183,6 +197,133 @@ namespace HRManagement.Data
             modelBuilder.Entity<Attendance>()
                 .HasIndex(a => new { a.EmployeeId, a.AttendanceDate })
                 .IsUnique();
+
+            // JobPosting
+            modelBuilder.Entity<JobPosting>()
+                .HasKey(jp => jp.JobPostingId);
+            modelBuilder.Entity<JobPosting>()
+                .HasOne(jp => jp.Organization)
+                .WithMany()
+                .HasForeignKey(jp => jp.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<JobPosting>()
+                .HasOne(jp => jp.Department)
+                .WithMany()
+                .HasForeignKey(jp => jp.DepartmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<JobPosting>()
+                .HasIndex(jp => new { jp.OrganizationId, jp.Status });
+
+            // Candidate
+            modelBuilder.Entity<Candidate>()
+                .HasKey(c => c.CandidateId);
+            modelBuilder.Entity<Candidate>()
+                .HasOne(c => c.Organization)
+                .WithMany()
+                .HasForeignKey(c => c.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Candidate>()
+                .HasIndex(c => c.Email)
+                .IsUnique();
+
+            // Application
+            modelBuilder.Entity<Application>()
+                .HasKey(a => a.ApplicationId);
+            modelBuilder.Entity<Application>()
+                .HasOne(a => a.Candidate)
+                .WithMany(c => c.Applications)
+                .HasForeignKey(a => a.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<Application>()
+                .HasOne(a => a.JobPosting)
+                .WithMany(jp => jp.Applications)
+                .HasForeignKey(a => a.JobPostingId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Application>()
+                .HasOne(a => a.AssignedTo)
+                .WithMany()
+                .HasForeignKey(a => a.AssignedToId)
+                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<Application>()
+                .HasIndex(a => new { a.CandidateId, a.JobPostingId })
+                .IsUnique();
+
+            // Evaluation
+            modelBuilder.Entity<Evaluation>()
+                .HasKey(e => e.EvaluationId);
+            modelBuilder.Entity<Evaluation>()
+                .HasOne(e => e.Employee)
+                .WithMany()
+                .HasForeignKey(e => e.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Evaluation>()
+                .HasOne(e => e.Evaluator)
+                .WithMany()
+                .HasForeignKey(e => e.EvaluatorId)
+                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<Evaluation>()
+                .HasIndex(e => new { e.EmployeeId, e.EvaluationType });
+
+            // Goal
+            modelBuilder.Entity<Goal>()
+                .HasKey(g => g.GoalId);
+            modelBuilder.Entity<Goal>()
+                .HasOne(g => g.Employee)
+                .WithMany()
+                .HasForeignKey(g => g.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<Goal>()
+                .HasOne(g => g.Owner)
+                .WithMany()
+                .HasForeignKey(g => g.OwnerId)
+                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<Goal>()
+                .HasOne(g => g.Evaluation)
+                .WithMany(e => e.Goals)
+                .HasForeignKey(g => g.EvaluationId)
+                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<Goal>()
+                .HasIndex(g => new { g.EmployeeId, g.Status });
+
+            // Skill
+            modelBuilder.Entity<Skill>()
+                .HasKey(s => s.SkillId);
+            modelBuilder.Entity<Skill>()
+                .HasOne(s => s.Organization)
+                .WithMany()
+                .HasForeignKey(s => s.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Skill>()
+                .HasIndex(s => new { s.OrganizationId, s.SkillName })
+                .IsUnique();
+
+            // EmployeeSkill
+            modelBuilder.Entity<EmployeeSkill>()
+                .HasKey(es => es.EmployeeSkillId);
+            modelBuilder.Entity<EmployeeSkill>()
+                .HasOne(es => es.Employee)
+                .WithMany()
+                .HasForeignKey(es => es.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<EmployeeSkill>()
+                .HasOne(es => es.Skill)
+                .WithMany(s => s.EmployeeSkills)
+                .HasForeignKey(es => es.SkillId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EmployeeSkill>()
+                .HasIndex(es => new { es.EmployeeId, es.SkillId })
+                .IsUnique();
+
+            // Contract
+            modelBuilder.Entity<Contract>()
+                .HasKey(c => c.ContractId);
+            modelBuilder.Entity<Contract>()
+                .HasOne(c => c.Employee)
+                .WithMany()
+                .HasForeignKey(c => c.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<Contract>()
+                .HasIndex(c => new { c.EmployeeId, c.ContractType });
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
