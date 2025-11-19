@@ -7,6 +7,7 @@ using HRManagement.Web.Components;
 using HRManagement.Web.Components.Account;
 using HRManagement.Web.Data;
 using HRManagement.Data;
+using HRManagement.Data.Seeders;
 using HRManagement.Services.Interfaces;
 using HRManagement.Services.Implementations;
 using HRManagement.Services.Mappings;
@@ -86,6 +87,13 @@ try
     if (app.Environment.IsDevelopment())
     {
         app.UseMigrationsEndPoint();
+
+        // Seed payroll data for testing
+        using (var scope = app.Services.CreateScope())
+        {
+            var hrContext = scope.ServiceProvider.GetRequiredService<HRContext>();
+            await PayrollSeeder.SeedPayrollDataAsync(hrContext);
+        }
     }
     else
     {
