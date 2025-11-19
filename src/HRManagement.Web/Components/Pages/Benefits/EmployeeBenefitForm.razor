@@ -1,0 +1,199 @@
+@page "/benefits/employee-benefits/create"
+@page "/benefits/employee-benefits/edit/{EmployeeBenefitId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@attribute [StreamRendering(true)]
+@inject IBenefitsService BenefitsService
+@inject IEmployeeService EmployeeService
+@inject NavigationManager NavManager
+
+<PageTitle>@(EmployeeBenefitId == 0 ? "Enroll Employee" : "Edit Enrollment")</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>@(EmployeeBenefitId == 0 ? "Enroll Employee in Benefit Plan" : "Edit Enrollment")</h2>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Loading...
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <EditForm Model="model" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <h5 class="mb-3">Enrollment Information</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="employeeId" class="form-label">Employee <span class="text-danger">*</span></label>
+                            <InputNumber id="employeeId" class="form-control" @bind-Value="model.EmployeeId" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="benefitPlanId" class="form-label">Benefit Plan <span class="text-danger">*</span></label>
+                            <InputSelect id="benefitPlanId" class="form-select" @bind-Value="model.BenefitPlanId">
+                                <option value="0">-- Select Benefit Plan --</option>
+                                @foreach (var plan in benefitPlans)
+                                {
+                                    <option value="@plan.BenefitPlanId">@plan.PlanName (@plan.BenefitTypeName)</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="enrolledDate" class="form-label">Enrolled Date <span class="text-danger">*</span></label>
+                            <InputDate id="enrolledDate" class="form-control" @bind-Value="model.EnrolledDate" />
+                        </div>
+
+                        @if (EmployeeBenefitId > 0)
+                        {
+                            <div class="col-md-6 mb-3">
+                                <label for="terminationDate" class="form-label">Termination Date</label>
+                                <InputDate id="terminationDate" class="form-control" @bind-Value="editModel!.TerminationDate" />
+                            </div>
+                        }
+                    </div>
+
+                    <h5 class="mb-3 mt-4">Beneficiary & Coverage</h5>
+
+                    <div class="mb-3">
+                        <label for="beneficiaryInfo" class="form-label">Beneficiary Information</label>
+                        <InputTextArea id="beneficiaryInfo" class="form-control" @bind-Value="model.BeneficiaryInfo" rows="2" />
+                    </div>
+
+                    <h5 class="mb-3 mt-4">Contribution Override (Optional)</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="empContribution" class="form-label">Employee Contribution Override</label>
+                            <InputNumber id="empContribution" class="form-control" @bind-Value="model.EmployeeContributionOverride" step="0.01" />
+                            <small class="text-muted">Leave blank to use plan default</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="empContributionEmp" class="form-label">Employer Contribution Override</label>
+                            <InputNumber id="empContributionEmp" class="form-control" @bind-Value="model.EmployerContributionOverride" step="0.01" />
+                            <small class="text-muted">Leave blank to use plan default</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="remarks" class="form-label">Remarks</label>
+                        <InputTextArea id="remarks" class="form-control" @bind-Value="model.Remarks" rows="2" />
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Save
+                        </button>
+                        <a href="/benefits/employee-benefits" class="btn btn-secondary">
+                            <i class="bi bi-x-lg"></i> Cancel
+                        </a>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long EmployeeBenefitId { get; set; }
+
+    private CreateEmployeeBenefitRequest model = new();
+    private UpdateEmployeeBenefitRequest? editModel;
+    private List<BenefitPlanDto> benefitPlans = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var plansResponse = await BenefitsService.GetActiveBenefitPlansAsync(1, 1, 100);
+            benefitPlans = plansResponse.Items.ToList();
+
+            if (EmployeeBenefitId == 0)
+            {
+                model.EnrolledDate = DateTime.Today;
+                isLoading = false;
+            }
+            else
+            {
+                var benefit = await BenefitsService.GetEmployeeBenefitByIdAsync(EmployeeBenefitId);
+                editModel = new UpdateEmployeeBenefitRequest
+                {
+                    EnrolledDate = benefit.EnrolledDate,
+                    TerminationDate = benefit.TerminationDate,
+                    EnrollmentStatus = benefit.EnrollmentStatus,
+                    EmployeeContributionOverride = benefit.EmployeeContributionOverride,
+                    EmployerContributionOverride = benefit.EmployerContributionOverride,
+                    BeneficiaryInfo = benefit.BeneficiaryInfo,
+                    UsedAmount = benefit.UsedAmount,
+                    ClaimNotes = benefit.ClaimNotes,
+                    Remarks = benefit.Remarks,
+                    IsActive = benefit.IsActive
+                };
+                model.EmployeeId = benefit.EmployeeId;
+                model.BenefitPlanId = benefit.BenefitPlanId;
+                model.EnrolledDate = benefit.EnrolledDate;
+                model.BeneficiaryInfo = benefit.BeneficiaryInfo;
+                model.EmployeeContributionOverride = benefit.EmployeeContributionOverride;
+                model.EmployerContributionOverride = benefit.EmployerContributionOverride;
+                model.Remarks = benefit.Remarks;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (EmployeeBenefitId == 0)
+            {
+                await BenefitsService.EnrollEmployeeBenefitAsync(model);
+            }
+            else
+            {
+                editModel = new UpdateEmployeeBenefitRequest
+                {
+                    EnrolledDate = model.EnrolledDate,
+                    TerminationDate = editModel?.TerminationDate,
+                    EnrollmentStatus = editModel?.EnrollmentStatus ?? "Active",
+                    EmployeeContributionOverride = model.EmployeeContributionOverride,
+                    EmployerContributionOverride = model.EmployerContributionOverride,
+                    BeneficiaryInfo = model.BeneficiaryInfo,
+                    UsedAmount = editModel?.UsedAmount ?? 0,
+                    ClaimNotes = editModel?.ClaimNotes ?? "",
+                    Remarks = model.Remarks,
+                    IsActive = editModel?.IsActive ?? true
+                };
+                await BenefitsService.UpdateEmployeeBenefitAsync(EmployeeBenefitId, editModel);
+            }
+            NavManager.NavigateTo("/benefits/employee-benefits");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving: {ex.Message}");
+        }
+    }
+}

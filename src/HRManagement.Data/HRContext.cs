@@ -47,8 +47,14 @@ namespace HRManagement.Data
         public DbSet<SalarySlip> SalarySlips { get; set; }
         public DbSet<SalarySlipComponent> SalarySlipComponents { get; set; }
 
+        // DbSets for Benefits Management module
+        public DbSet<BenefitType> BenefitTypes { get; set; }
+        public DbSet<BenefitPlan> BenefitPlans { get; set; }
+        public DbSet<EmployeeBenefit> EmployeeBenefits { get; set; }
+        public DbSet<BenefitDeduction> BenefitDeductions { get; set; }
+
         // Future modules will add more DbSets here
-        // - Benefits, Training, etc.
+        // - Training, etc.
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -423,6 +429,64 @@ namespace HRManagement.Data
                 .WithMany(ss => ss.SalarySlipComponents)
                 .HasForeignKey(ssc => ssc.SalarySlipId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // BenefitType
+            modelBuilder.Entity<BenefitType>()
+                .HasKey(bt => bt.BenefitTypeId);
+            modelBuilder.Entity<BenefitType>()
+                .HasOne(bt => bt.Organization)
+                .WithMany()
+                .HasForeignKey(bt => bt.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<BenefitType>()
+                .HasIndex(bt => new { bt.OrganizationId, bt.TypeName })
+                .IsUnique();
+
+            // BenefitPlan
+            modelBuilder.Entity<BenefitPlan>()
+                .HasKey(bp => bp.BenefitPlanId);
+            modelBuilder.Entity<BenefitPlan>()
+                .HasOne(bp => bp.BenefitType)
+                .WithMany(bt => bt.BenefitPlans)
+                .HasForeignKey(bp => bp.BenefitTypeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<BenefitPlan>()
+                .HasOne(bp => bp.Organization)
+                .WithMany()
+                .HasForeignKey(bp => bp.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<BenefitPlan>()
+                .HasIndex(bp => bp.PlanCode)
+                .IsUnique();
+
+            // EmployeeBenefit
+            modelBuilder.Entity<EmployeeBenefit>()
+                .HasKey(eb => eb.EmployeeBenefitId);
+            modelBuilder.Entity<EmployeeBenefit>()
+                .HasOne(eb => eb.Employee)
+                .WithMany()
+                .HasForeignKey(eb => eb.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<EmployeeBenefit>()
+                .HasOne(eb => eb.BenefitPlan)
+                .WithMany(bp => bp.EmployeeBenefits)
+                .HasForeignKey(eb => eb.BenefitPlanId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EmployeeBenefit>()
+                .HasIndex(eb => new { eb.EmployeeId, eb.BenefitPlanId })
+                .IsUnique();
+
+            // BenefitDeduction
+            modelBuilder.Entity<BenefitDeduction>()
+                .HasKey(bd => bd.BenefitDeductionId);
+            modelBuilder.Entity<BenefitDeduction>()
+                .HasOne(bd => bd.BenefitPlan)
+                .WithMany(bp => bp.BenefitDeductions)
+                .HasForeignKey(bd => bd.BenefitPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<BenefitDeduction>()
+                .HasIndex(bd => bd.DeductionCode)
+                .IsUnique();
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

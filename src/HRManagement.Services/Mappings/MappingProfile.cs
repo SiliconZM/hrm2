@@ -111,6 +111,43 @@ namespace HRManagement.Services.Mappings
                 .ForMember(d => d.UpdatedAt, o => o.Ignore())
                 .ForMember(d => d.SalarySlipId, o => o.Ignore());
 
+            // Benefit Type mappings
+            CreateMap<BenefitType, BenefitTypeDto>();
+            CreateMap<CreateBenefitTypeRequest, BenefitType>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.BenefitTypeId, o => o.Ignore());
+
+            // Benefit Plan mappings
+            CreateMap<BenefitPlan, BenefitPlanDto>()
+                .ForMember(d => d.BenefitTypeName, o => o.MapFrom(s => s.BenefitType != null ? s.BenefitType.TypeName : null));
+            CreateMap<CreateBenefitPlanRequest, BenefitPlan>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.BenefitPlanId, o => o.Ignore());
+
+            // Employee Benefit mappings
+            CreateMap<EmployeeBenefit, EmployeeBenefitDto>()
+                .ForMember(d => d.EmployeeName, o => o.MapFrom(s => s.Employee != null ? s.Employee.FullName : null))
+                .ForMember(d => d.EmployeeCode, o => o.MapFrom(s => s.Employee != null ? s.Employee.EmployeeCode : null))
+                .ForMember(d => d.BenefitTypeName, o => o.MapFrom(s => s.BenefitPlan != null && s.BenefitPlan.BenefitType != null ? s.BenefitPlan.BenefitType.TypeName : null))
+                .ForMember(d => d.PlanName, o => o.MapFrom(s => s.BenefitPlan != null ? s.BenefitPlan.PlanName : null))
+                .ForMember(d => d.PlanCode, o => o.MapFrom(s => s.BenefitPlan != null ? s.BenefitPlan.PlanCode : null))
+                .ForMember(d => d.PlanEmployeeContribution, o => o.MapFrom(s => s.BenefitPlan != null ? s.BenefitPlan.EmployeeContribution : 0))
+                .ForMember(d => d.PlanEmployerContribution, o => o.MapFrom(s => s.BenefitPlan != null ? s.BenefitPlan.EmployerContribution : 0));
+            CreateMap<CreateEmployeeBenefitRequest, EmployeeBenefit>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.EmployeeBenefitId, o => o.Ignore());
+
+            // Benefit Deduction mappings
+            CreateMap<BenefitDeduction, BenefitDeductionDto>()
+                .ForMember(d => d.PlanName, o => o.MapFrom(s => s.BenefitPlan != null ? s.BenefitPlan.PlanName : null));
+            CreateMap<CreateBenefitDeductionRequest, BenefitDeduction>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.BenefitDeductionId, o => o.Ignore());
+
         }
     }
 }

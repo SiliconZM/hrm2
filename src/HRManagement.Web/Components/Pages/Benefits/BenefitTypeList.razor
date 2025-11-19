@@ -1,0 +1,94 @@
+@page "/benefits/benefit-types"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@attribute [StreamRendering(true)]
+@inject IBenefitsService BenefitsService
+@inject NavigationManager NavManager
+
+<PageTitle>Benefit Types</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>Benefit Types</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="/benefits/benefit-types/create" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Add Benefit Type
+            </a>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="alert alert-info">Loading benefit types...</div>
+    }
+    else if (benefitTypes == null || benefitTypes.Items.Count() == 0)
+    {
+        <div class="alert alert-warning">No benefit types found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Type Name</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th>Plans</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var benefitType in benefitTypes.Items)
+                    {
+                        <tr>
+                            <td><strong>@benefitType.TypeName</strong></td>
+                            <td><span class="badge bg-info">@benefitType.Category</span></td>
+                            <td>@benefitType.Description</td>
+                            <td><span class="badge bg-secondary">@benefitType.PlanCount</span></td>
+                            <td>@(benefitType.IsActive ? "Active" : "Inactive")</td>
+                            <td>
+                                <a href="/benefits/benefit-types/edit/@benefitType.BenefitTypeId" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteType(benefitType.BenefitTypeId)"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private PagedResponse<BenefitTypeDto>? benefitTypes;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isLoading = true;
+            benefitTypes = await BenefitsService.GetAllBenefitTypesAsync(1, 1, 10);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task DeleteType(long benefitTypeId)
+    {
+        try
+        {
+            await BenefitsService.DeleteBenefitTypeAsync(benefitTypeId);
+            await OnInitializedAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+}

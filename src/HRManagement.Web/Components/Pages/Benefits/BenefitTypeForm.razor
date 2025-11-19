@@ -1,0 +1,152 @@
+@page "/benefits/benefit-types/create"
+@page "/benefits/benefit-types/edit/{BenefitTypeId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@attribute [StreamRendering(true)]
+@inject IBenefitsService BenefitsService
+@inject NavigationManager NavManager
+
+<PageTitle>@(BenefitTypeId == 0 ? "Add Benefit Type" : "Edit Benefit Type")</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>@(BenefitTypeId == 0 ? "Add New Benefit Type" : "Edit Benefit Type")</h2>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Loading...
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <EditForm Model="model" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <div class="mb-3">
+                        <label for="typeName" class="form-label">Type Name <span class="text-danger">*</span></label>
+                        <InputText id="typeName" class="form-control" @bind-Value="model.TypeName" placeholder="e.g., Health Insurance" />
+                        <ValidationMessage For="@(() => model.TypeName)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Category <span class="text-danger">*</span></label>
+                        <InputSelect id="category" class="form-select" @bind-Value="model.Category">
+                            <option value="">-- Select Category --</option>
+                            <option value="Health">Health</option>
+                            <option value="Retirement">Retirement</option>
+                            <option value="Insurance">Insurance</option>
+                            <option value="Wellness">Wellness</option>
+                            <option value="Financial">Financial</option>
+                            <option value="Other">Other</option>
+                        </InputSelect>
+                        <ValidationMessage For="@(() => model.Category)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <InputTextArea id="description" class="form-control" @bind-Value="model.Description" rows="3" placeholder="Describe this benefit type..." />
+                    </div>
+
+                    @if (BenefitTypeId > 0)
+                    {
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <InputCheckbox id="isActive" class="form-check-input" @bind-Value="editModel!.IsActive" />
+                                <label class="form-check-label" for="isActive">
+                                    Is Active
+                                </label>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Save
+                        </button>
+                        <a href="/benefits/benefit-types" class="btn btn-secondary">
+                            <i class="bi bi-x-lg"></i> Cancel
+                        </a>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long BenefitTypeId { get; set; }
+
+    private CreateBenefitTypeRequest model = new();
+    private UpdateBenefitTypeRequest? editModel;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (BenefitTypeId == 0)
+        {
+            isLoading = false;
+        }
+        else
+        {
+            try
+            {
+                isLoading = true;
+                var benefitType = await BenefitsService.GetBenefitTypeByIdAsync(BenefitTypeId);
+                editModel = new UpdateBenefitTypeRequest
+                {
+                    TypeName = benefitType.TypeName,
+                    Description = benefitType.Description,
+                    Category = benefitType.Category,
+                    IsActive = benefitType.IsActive
+                };
+                model.TypeName = benefitType.TypeName;
+                model.Description = benefitType.Description;
+                model.Category = benefitType.Category;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading benefit type: {ex.Message}");
+            }
+            finally
+            {
+                isLoading = false;
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (BenefitTypeId == 0)
+            {
+                await BenefitsService.CreateBenefitTypeAsync(1, model);
+            }
+            else
+            {
+                editModel = new UpdateBenefitTypeRequest
+                {
+                    TypeName = model.TypeName,
+                    Description = model.Description,
+                    Category = model.Category,
+                    IsActive = editModel?.IsActive ?? true
+                };
+                await BenefitsService.UpdateBenefitTypeAsync(BenefitTypeId, editModel);
+            }
+            NavManager.NavigateTo("/benefits/benefit-types");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving benefit type: {ex.Message}");
+        }
+    }
+}

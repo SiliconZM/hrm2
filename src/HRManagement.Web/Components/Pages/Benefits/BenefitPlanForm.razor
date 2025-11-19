@@ -1,0 +1,261 @@
+@page "/benefits/benefit-plans/create"
+@page "/benefits/benefit-plans/edit/{BenefitPlanId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@attribute [StreamRendering(true)]
+@inject IBenefitsService BenefitsService
+@inject NavigationManager NavManager
+
+<PageTitle>@(BenefitPlanId == 0 ? "Add Benefit Plan" : "Edit Benefit Plan")</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>@(BenefitPlanId == 0 ? "Add New Benefit Plan" : "Edit Benefit Plan")</h2>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Loading...
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <EditForm Model="model" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <h5 class="mb-3">Basic Information</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="benefitTypeId" class="form-label">Benefit Type <span class="text-danger">*</span></label>
+                            <InputSelect id="benefitTypeId" class="form-select" @bind-Value="model.BenefitTypeId">
+                                <option value="0">-- Select Benefit Type --</option>
+                                @foreach (var type in benefitTypes)
+                                {
+                                    <option value="@type.BenefitTypeId">@type.TypeName</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="planName" class="form-label">Plan Name <span class="text-danger">*</span></label>
+                            <InputText id="planName" class="form-control" @bind-Value="model.PlanName" placeholder="e.g., Gold Health Plan" />
+                            <ValidationMessage For="@(() => model.PlanName)" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="planCode" class="form-label">Plan Code <span class="text-danger">*</span></label>
+                            <InputText id="planCode" class="form-control" @bind-Value="model.PlanCode" placeholder="e.g., HIP-GOLD-001" />
+                            <ValidationMessage For="@(() => model.PlanCode)" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="contributionFrequency" class="form-label">Contribution Frequency</label>
+                            <InputSelect id="contributionFrequency" class="form-select" @bind-Value="model.ContributionFrequency">
+                                <option value="Monthly">Monthly</option>
+                                <option value="Quarterly">Quarterly</option>
+                                <option value="Yearly">Yearly</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <InputTextArea id="description" class="form-control" @bind-Value="model.Description" rows="2" placeholder="Describe this benefit plan..." />
+                    </div>
+
+                    <h5 class="mb-3 mt-4">Contribution Details</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="employeeContribution" class="form-label">Employee Contribution (Monthly) <span class="text-danger">*</span></label>
+                            <InputNumber id="employeeContribution" class="form-control" @bind-Value="model.EmployeeContribution" step="0.01" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="employerContribution" class="form-label">Employer Contribution (Monthly) <span class="text-danger">*</span></label>
+                            <InputNumber id="employerContribution" class="form-control" @bind-Value="model.EmployerContribution" step="0.01" />
+                        </div>
+                    </div>
+
+                    <h5 class="mb-3 mt-4">Coverage Details</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="coverageAmount" class="form-label">Coverage Amount</label>
+                            <InputNumber id="coverageAmount" class="form-control" @bind-Value="model.CoverageAmount" step="0.01" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="displayOrder" class="form-label">Display Order</label>
+                            <InputNumber id="displayOrder" class="form-control" @bind-Value="model.DisplayOrder" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="coverageDetails" class="form-label">Coverage Details</label>
+                        <InputTextArea id="coverageDetails" class="form-control" @bind-Value="model.CoverageDetails" rows="2" />
+                    </div>
+
+                    <h5 class="mb-3 mt-4">Effective Period</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="effectiveDate" class="form-label">Effective Date <span class="text-danger">*</span></label>
+                            <InputDate id="effectiveDate" class="form-control" @bind-Value="model.EffectiveDate" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="endDate" class="form-label">End Date</label>
+                            <InputDate id="endDate" class="form-control" @bind-Value="model.EndDate" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <InputCheckbox id="isDefaultPlan" class="form-check-input" @bind-Value="model.IsDefaultPlan" />
+                                <label class="form-check-label" for="isDefaultPlan">
+                                    Is Default Plan for New Employees
+                                </label>
+                            </div>
+                        </div>
+
+                        @if (BenefitPlanId > 0)
+                        {
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <InputCheckbox id="isActive" class="form-check-input" @bind-Value="editModel!.IsActive" />
+                                    <label class="form-check-label" for="isActive">
+                                        Is Active
+                                    </label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Save
+                        </button>
+                        <a href="/benefits/benefit-plans" class="btn btn-secondary">
+                            <i class="bi bi-x-lg"></i> Cancel
+                        </a>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long BenefitPlanId { get; set; }
+
+    private CreateBenefitPlanRequest model = new();
+    private UpdateBenefitPlanRequest? editModel;
+    private List<BenefitTypeDto> benefitTypes = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Load benefit types
+            var typesResponse = await BenefitsService.GetAllBenefitTypesAsync(1, 1, 100);
+            benefitTypes = typesResponse.Items.ToList();
+
+            if (BenefitPlanId == 0)
+            {
+                model.EffectiveDate = DateTime.Today;
+                isLoading = false;
+            }
+            else
+            {
+                var benefitPlan = await BenefitsService.GetBenefitPlanByIdAsync(BenefitPlanId);
+                editModel = new UpdateBenefitPlanRequest
+                {
+                    PlanName = benefitPlan.PlanName,
+                    Description = benefitPlan.Description,
+                    PlanCode = benefitPlan.PlanCode,
+                    EmployeeContribution = benefitPlan.EmployeeContribution,
+                    EmployerContribution = benefitPlan.EmployerContribution,
+                    ContributionFrequency = benefitPlan.ContributionFrequency,
+                    EffectiveDate = benefitPlan.EffectiveDate,
+                    EndDate = benefitPlan.EndDate,
+                    CoverageAmount = benefitPlan.CoverageAmount,
+                    CoverageDetails = benefitPlan.CoverageDetails,
+                    IsActive = benefitPlan.IsActive,
+                    IsDefaultPlan = benefitPlan.IsDefaultPlan,
+                    DisplayOrder = benefitPlan.DisplayOrder
+                };
+                model.BenefitTypeId = benefitPlan.BenefitTypeId;
+                model.PlanName = benefitPlan.PlanName;
+                model.Description = benefitPlan.Description;
+                model.PlanCode = benefitPlan.PlanCode;
+                model.EmployeeContribution = benefitPlan.EmployeeContribution;
+                model.EmployerContribution = benefitPlan.EmployerContribution;
+                model.ContributionFrequency = benefitPlan.ContributionFrequency;
+                model.EffectiveDate = benefitPlan.EffectiveDate;
+                model.EndDate = benefitPlan.EndDate;
+                model.CoverageAmount = benefitPlan.CoverageAmount;
+                model.CoverageDetails = benefitPlan.CoverageDetails;
+                model.IsDefaultPlan = benefitPlan.IsDefaultPlan;
+                model.DisplayOrder = benefitPlan.DisplayOrder;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (BenefitPlanId == 0)
+            {
+                await BenefitsService.CreateBenefitPlanAsync(1, model);
+            }
+            else
+            {
+                editModel = new UpdateBenefitPlanRequest
+                {
+                    PlanName = model.PlanName,
+                    Description = model.Description,
+                    PlanCode = model.PlanCode,
+                    EmployeeContribution = model.EmployeeContribution,
+                    EmployerContribution = model.EmployerContribution,
+                    ContributionFrequency = model.ContributionFrequency,
+                    EffectiveDate = model.EffectiveDate,
+                    EndDate = model.EndDate,
+                    CoverageAmount = model.CoverageAmount,
+                    CoverageDetails = model.CoverageDetails,
+                    IsActive = editModel?.IsActive ?? true,
+                    IsDefaultPlan = model.IsDefaultPlan,
+                    DisplayOrder = model.DisplayOrder
+                };
+                await BenefitsService.UpdateBenefitPlanAsync(BenefitPlanId, editModel);
+            }
+            NavManager.NavigateTo("/benefits/benefit-plans");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving benefit plan: {ex.Message}");
+        }
+    }
+}

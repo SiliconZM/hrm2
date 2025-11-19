@@ -80,6 +80,7 @@ try
     builder.Services.AddScoped<IContractsService, ContractsService>();
     builder.Services.AddScoped<ILeaveService, LeaveService>();
     builder.Services.AddScoped<IPayrollService, PayrollService>();
+    builder.Services.AddScoped<IBenefitsService, BenefitsService>();
 
     var app = builder.Build();
 
@@ -88,7 +89,7 @@ try
     {
         app.UseMigrationsEndPoint();
 
-        // Apply migrations and seed payroll data for testing
+        // Apply migrations and seed data for testing
         try
         {
             using (var scope = app.Services.CreateScope())
@@ -96,8 +97,12 @@ try
                 var hrContext = scope.ServiceProvider.GetRequiredService<HRContext>();
                 // Apply pending migrations
                 await hrContext.Database.MigrateAsync();
-                // Seed payroll data after migrations
+                // Seed employee data first (other seeders depend on this)
+                await EmployeeSeeder.SeedEmployeeDataAsync(hrContext);
+                // Seed payroll data after employees
                 await PayrollSeeder.SeedPayrollDataAsync(hrContext);
+                // Seed benefits data
+                await BenefitsSeeder.SeedBenefitsDataAsync(hrContext);
             }
         }
         catch (Exception ex)
