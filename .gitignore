@@ -1,0 +1,68 @@
+# Visual Studio and user-specific files
+.vs/
+.vscode/
+*.user
+*.suo
+*.userprefs
+*.sln.iml
+.idea/
+
+# Build results
+bin/
+obj/
+Debug/
+Release/
+x64/
+x86/
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+.nuget/
+
+# Entity Framework
+*.db
+*.db-shm
+*.db-wal
+Migrations/
+
+# Logs
+logs/
+*.log
+
+# IDE
+*.swp
+*.swo
+*~
+
+# Environment files
+appsettings.local.json
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Testing
+.coverage
+TestResults/
+
+# Build artifacts
+dist/
+build/
+
+# npm/yarn
+node_modules/
+package-lock.json
+yarn.lock
+
+# Temporary files
+*.tmp
+*.bak
+*.temp
+
+# App specific
+Data/app.db
