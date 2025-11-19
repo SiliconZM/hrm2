@@ -1,0 +1,197 @@
+@page "/payroll/employee-salaries/create"
+@page "/payroll/employee-salaries/edit/{EmployeeSalaryId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IPayrollService PayrollService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(EmployeeSalaryId == 0 ? "Assign Employee Salary" : "Edit Employee Salary")</PageTitle>
+
+<div class="container mt-4">
+    <h2>@(EmployeeSalaryId == 0 ? "Assign New Employee Salary" : "Edit Employee Salary")</h2>
+
+    @if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading...</div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="employeeId" class="form-label">Employee ID *</label>
+                                <input type="number" class="form-control" id="employeeId"
+                                       @bind="model.EmployeeId" placeholder="1" disabled="@(EmployeeSalaryId != 0)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="structureId" class="form-label">Salary Structure *</label>
+                                <input type="number" class="form-control" id="structureId"
+                                       @bind="model.SalaryStructureId" placeholder="1" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="effectiveDate" class="form-label">Effective Date *</label>
+                                <input type="date" class="form-control" id="effectiveDate"
+                                       @bind="model.EffectiveDate" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="overrideBasic" class="form-label">Override Basic Salary (Optional)</label>
+                                <input type="number" class="form-control" id="overrideBasic"
+                                       @bind="model.OverrideBasicSalary" step="0.01" placeholder="0.00" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="remarks" class="form-label">Remarks</label>
+                        <textarea class="form-control" id="remarks" rows="3"
+                                  @bind="remarks" placeholder="Enter remarks..."></textarea>
+                    </div>
+
+                    @if (EmployeeSalaryId != 0)
+                    {
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="grossSalary" class="form-label">Gross Salary</label>
+                                    <input type="number" class="form-control" id="grossSalary"
+                                           @bind="updateModel.GrossSalary" step="0.01" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="netSalary" class="form-label">Net Salary</label>
+                                    <input type="number" class="form-control" id="netSalary"
+                                           @bind="updateModel.NetSalary" step="0.01" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <div class="form-check mt-4">
+                                        <input type="checkbox" class="form-check-input" id="isActive"
+                                               @bind="updateModel.IsActive" />
+                                        <label class="form-check-label" for="isActive">
+                                            Active
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-primary me-2" disabled="@submitting">
+                            @(submitting ? "Saving..." : "Save")
+                        </button>
+                        <a href="/payroll/employee-salaries" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long EmployeeSalaryId { get; set; }
+
+    private CreateEmployeeSalaryRequest model = new();
+    private UpdateEmployeeSalaryRequest updateModel = new();
+    private string? remarks;
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+    private const long OrganizationId = 1; // In production, get from auth/context
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (EmployeeSalaryId != 0)
+        {
+            try
+            {
+                loading = true;
+                var salary = await PayrollService.GetEmployeeActiveSalaryAsync(EmployeeSalaryId);
+                if (salary != null)
+                {
+                    model = new CreateEmployeeSalaryRequest
+                    {
+                        EmployeeId = salary.EmployeeId,
+                        SalaryStructureId = salary.SalaryStructureId,
+                        EffectiveDate = salary.EffectiveDate,
+                        OverrideBasicSalary = salary.OverrideBasicSalary
+                    };
+                    updateModel = new UpdateEmployeeSalaryRequest
+                    {
+                        SalaryStructureId = salary.SalaryStructureId,
+                        EffectiveDate = salary.EffectiveDate,
+                        OverrideBasicSalary = salary.OverrideBasicSalary,
+                        GrossSalary = salary.GrossSalary,
+                        NetSalary = salary.NetSalary,
+                        IsActive = salary.IsActive
+                    };
+                    remarks = salary.Remarks;
+                }
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+        else
+        {
+            model.EffectiveDate = DateTime.Today;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            if (EmployeeSalaryId == 0)
+            {
+                model.Remarks = remarks;
+                await PayrollService.CreateEmployeeSalaryAsync(model);
+            }
+            else
+            {
+                updateModel.Remarks = remarks;
+                await PayrollService.UpdateEmployeeSalaryAsync(EmployeeSalaryId, updateModel);
+            }
+
+            NavigationManager.NavigateTo("/payroll/employee-salaries");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+}

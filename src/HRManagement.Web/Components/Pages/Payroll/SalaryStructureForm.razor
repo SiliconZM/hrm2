@@ -1,0 +1,155 @@
+@page "/payroll/salary-structures/create"
+@page "/payroll/salary-structures/edit/{StructureId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IPayrollService PayrollService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(StructureId == 0 ? "Create Salary Structure" : "Edit Salary Structure")</PageTitle>
+
+<div class="container mt-4">
+    <h2>@(StructureId == 0 ? "Create New Salary Structure" : "Edit Salary Structure")</h2>
+
+    @if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading...</div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Structure Name *</label>
+                                <input type="text" class="form-control" id="name"
+                                       @bind="model.StructureName" placeholder="e.g., Manager Salary Structure" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="basicSalary" class="form-label">Basic Salary *</label>
+                                <input type="number" class="form-control" id="basicSalary"
+                                       @bind="model.BasicSalary" step="0.01" placeholder="50000.00" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="3"
+                                  @bind="model.Description" placeholder="Enter description..."></textarea>
+                    </div>
+
+                    @if (StructureId != 0)
+                    {
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="isActive"
+                                       @bind="isActive" />
+                                <label class="form-check-label" for="isActive">
+                                    Active
+                                </label>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-primary me-2" disabled="@submitting">
+                            @(submitting ? "Saving..." : "Save")
+                        </button>
+                        <a href="/payroll/salary-structures" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long StructureId { get; set; }
+
+    private CreateSalaryStructureRequest model = new();
+    private bool isActive = true;
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+    private const long OrganizationId = 1; // In production, get from auth/context
+
+    protected override async Task OnInitializedAsync()
+    {
+        model.OrganizationId = OrganizationId;
+
+        if (StructureId != 0)
+        {
+            try
+            {
+                loading = true;
+                var structure = await PayrollService.GetSalaryStructureByIdAsync(StructureId);
+                if (structure != null)
+                {
+                    model = new CreateSalaryStructureRequest
+                    {
+                        OrganizationId = structure.OrganizationId,
+                        StructureName = structure.StructureName,
+                        Description = structure.Description,
+                        BasicSalary = structure.BasicSalary
+                    };
+                    isActive = structure.IsActive;
+                }
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            if (StructureId == 0)
+            {
+                await PayrollService.CreateSalaryStructureAsync(model);
+            }
+            else
+            {
+                var updateModel = new UpdateSalaryStructureRequest
+                {
+                    StructureName = model.StructureName,
+                    Description = model.Description,
+                    BasicSalary = model.BasicSalary,
+                    IsActive = isActive
+                };
+                await PayrollService.UpdateSalaryStructureAsync(StructureId, updateModel);
+            }
+
+            NavigationManager.NavigateTo("/payroll/salary-structures");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+}

@@ -1,0 +1,266 @@
+@page "/payroll/salary-slips/view/{SalarySlipId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IPayrollService PayrollService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Salary Slip Details</PageTitle>
+
+<div class="container mt-4">
+    @if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading salary slip...</div>
+    }
+    else if (slip != null)
+    {
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <h2>Salary Slip</h2>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="/payroll/salary-slips" class="btn btn-secondary">Back to List</a>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Slip Details</h5>
+                        <p><strong>Slip Number:</strong> @slip.SlipNumber</p>
+                        <p><strong>Employee:</strong> @slip.EmployeeName</p>
+                        <p><strong>Period:</strong> @slip.Period</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Status</h5>
+                        <p>
+                            <span class="badge" style="background-color: @GetStatusColor(slip.Status)">
+                                @slip.Status
+                            </span>
+                        </p>
+                        @if (slip.SalaryCreditedDate.HasValue)
+                        {
+                            <p><strong>Credited Date:</strong> @slip.SalaryCreditedDate.Value.ToString("yyyy-MM-dd")</p>
+                        }
+                        @if (!string.IsNullOrEmpty(slip.Remarks))
+                        {
+                            <p><strong>Remarks:</strong> @slip.Remarks</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5>Salary Components Breakdown</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Type</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (slip.Components != null && slip.Components.Any())
+                        {
+                            @foreach (var component in slip.Components.OrderBy(c => c.DisplayOrder))
+                            {
+                                <tr>
+                                    <td>@component.ComponentName</td>
+                                    <td>
+                                        <span class="badge" style="background-color: @GetComponentTypeColor(component.ComponentType)">
+                                            @component.ComponentType
+                                        </span>
+                                    </td>
+                                    <td class="text-end">@component.Amount.ToString("C")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5>Salary Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Gross Salary</strong></td>
+                                <td class="text-end"><strong>@slip.GrossSalary.ToString("C")</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Total Deductions</td>
+                                <td class="text-end">@slip.TotalDeductions.ToString("C")</td>
+                            </tr>
+                            <tr>
+                                <td>Income Tax</td>
+                                <td class="text-end">@slip.IncomeTax.ToString("C")</td>
+                            </tr>
+                            <tr style="border-top: 2px solid #000;">
+                                <td><strong>Net Payable</strong></td>
+                                <td class="text-end"><strong>@slip.NetPayable.ToString("C")</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            @if (slip.Status == "Generated")
+            {
+                <button class="btn btn-success me-2" @onclick="ApproveSlip" disabled="@submitting">
+                    @(submitting ? "Approving..." : "Approve")
+                </button>
+            }
+            @if (slip.Status == "Approved")
+            {
+                <button class="btn btn-primary me-2" @onclick="SendSlip" disabled="@submitting">
+                    @(submitting ? "Sending..." : "Send to Employee")
+                </button>
+            }
+            @if (slip.Status == "Sent" || slip.Status == "Approved")
+            {
+                <button class="btn btn-info me-2" @onclick="MarkAsPaid" disabled="@submitting">
+                    @(submitting ? "Processing..." : "Mark as Paid")
+                </button>
+            }
+            <a href="/payroll/salary-slips" class="btn btn-secondary">Back</a>
+        </div>
+    }
+    else if (!loading)
+    {
+        <div class="alert alert-warning">Salary slip not found.</div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long SalarySlipId { get; set; }
+
+    private SalarySlipDto? slip;
+    private bool loading = true;
+    private bool submitting = false;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSlip();
+    }
+
+    private async Task LoadSlip()
+    {
+        try
+        {
+            loading = true;
+            error = null;
+            slip = await PayrollService.GetSalarySlipByIdAsync(SalarySlipId);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ApproveSlip()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+            await PayrollService.MarkSalarySlipAsApprovedAsync(SalarySlipId);
+            await LoadSlip();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private async Task SendSlip()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+            await PayrollService.MarkSalarySlipAsSentAsync(SalarySlipId);
+            await LoadSlip();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private async Task MarkAsPaid()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+            await PayrollService.MarkSalarySlipAsPaidAsync(SalarySlipId, DateTime.Now);
+            await LoadSlip();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private string GetStatusColor(string status)
+    {
+        return status switch
+        {
+            "Draft" => "#6c757d",
+            "Generated" => "#0dcaf0",
+            "Approved" => "#0d6efd",
+            "Sent" => "#198754",
+            "Paid" => "#28a745",
+            "Acknowledged" => "#6f42c1",
+            _ => "#17a2b8"
+        };
+    }
+
+    private string GetComponentTypeColor(string componentType)
+    {
+        return componentType switch
+        {
+            "Earning" => "#198754",
+            "Deduction" => "#dc3545",
+            "Tax" => "#fd7e14",
+            _ => "#6c757d"
+        };
+    }
+}

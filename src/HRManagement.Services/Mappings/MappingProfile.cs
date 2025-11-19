@@ -60,6 +60,57 @@ namespace HRManagement.Services.Mappings
             CreateMap<CreateLeaveBalanceRequest, LeaveBalance>()
                 .ForMember(d => d.UpdatedAt, o => o.Ignore());
 
+            // Salary Structure mappings
+            CreateMap<SalaryStructure, SalaryStructureDto>();
+            CreateMap<CreateSalaryStructureRequest, SalaryStructure>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.SalaryStructureId, o => o.Ignore());
+
+            // Salary Component mappings
+            CreateMap<SalaryComponent, SalaryComponentDto>();
+            CreateMap<CreateSalaryComponentRequest, SalaryComponent>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.SalaryComponentId, o => o.Ignore());
+
+            // Employee Salary mappings
+            CreateMap<EmployeeSalary, EmployeeSalaryDto>()
+                .ForMember(d => d.EmployeeName, o => o.MapFrom(s => s.Employee != null ? s.Employee.FullName : null))
+                .ForMember(d => d.SalaryStructureName, o => o.MapFrom(s => s.SalaryStructure != null ? s.SalaryStructure.StructureName : null));
+
+            CreateMap<CreateEmployeeSalaryRequest, EmployeeSalary>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.EmployeeSalaryId, o => o.Ignore());
+
+            // Payroll mappings
+            CreateMap<Payroll, PayrollDto>();
+            CreateMap<CreatePayrollRequest, Payroll>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.PayrollId, o => o.Ignore());
+
+            // Payroll Detail mappings
+            CreateMap<PayrollDetail, PayrollDetailDto>()
+                .ForMember(d => d.EmployeeName, o => o.MapFrom(s => s.Employee != null ? s.Employee.FullName : null));
+
+            CreateMap<CreatePayrollDetailRequest, PayrollDetail>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.PayrollDetailId, o => o.Ignore());
+
+            // Salary Slip mappings
+            CreateMap<SalarySlip, SalarySlipDto>()
+                .ForMember(d => d.EmployeeName, o => o.MapFrom(s => s.Employee != null ? s.Employee.FullName : null));
+
+            CreateMap<SalarySlipComponent, SalarySlipComponentDto>();
+
+            CreateMap<CreateSalarySlipRequest, SalarySlip>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.SalarySlipId, o => o.Ignore());
+
         }
     }
 }

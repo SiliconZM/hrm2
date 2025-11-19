@@ -1,0 +1,138 @@
+@page "/payroll/salary-slips"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IPayrollService PayrollService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Salary Slips</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Salary Slips</h2>
+        </div>
+        <div class="col-md-4">
+            <div class="input-group">
+                <input type="number" class="form-control" placeholder="Search by Employee ID..."
+                       @bind="searchEmployeeId" @bind:event="onchange" />
+                <button class="btn btn-outline-secondary" type="button" @onclick="SearchSlips">Search</button>
+            </div>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading salary slips...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else if (slips != null && slips.Any())
+    {
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Slip Number</th>
+                            <th>Employee</th>
+                            <th>Period</th>
+                            <th>Gross Salary</th>
+                            <th>Deductions</th>
+                            <th>Net Payable</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var slip in slips)
+                        {
+                            <tr>
+                                <td><strong>@slip.SlipNumber</strong></td>
+                                <td>@slip.EmployeeName</td>
+                                <td>@slip.Period</td>
+                                <td>@slip.GrossSalary.ToString("C")</td>
+                                <td>@slip.TotalDeductions.ToString("C")</td>
+                                <td><strong>@slip.NetPayable.ToString("C")</strong></td>
+                                <td>
+                                    <span class="badge" style="background-color: @GetStatusColor(slip.Status)">
+                                        @slip.Status
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="/payroll/salary-slips/view/@slip.SalarySlipId" class="btn btn-sm btn-info">View</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">No salary slips found.</div>
+    }
+</div>
+
+@code {
+    private List<SalarySlipDto>? slips;
+    private bool loading = true;
+    private string? error;
+    private long searchEmployeeId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSlips();
+    }
+
+    private async Task LoadSlips()
+    {
+        try
+        {
+            loading = true;
+            error = null;
+
+            // Load salary slips for the current year
+            if (searchEmployeeId > 0)
+            {
+                slips = await PayrollService.GetSalarySlipsByEmployeeAsync(searchEmployeeId, DateTime.Now.Year);
+            }
+            else
+            {
+                // Placeholder: In production, get all slips for the organization
+                slips = new List<SalarySlipDto>();
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SearchSlips()
+    {
+        await LoadSlips();
+    }
+
+    private string GetStatusColor(string status)
+    {
+        return status switch
+        {
+            "Draft" => "#6c757d",
+            "Generated" => "#0dcaf0",
+            "Approved" => "#0d6efd",
+            "Sent" => "#198754",
+            "Paid" => "#28a745",
+            "Acknowledged" => "#6f42c1",
+            _ => "#17a2b8"
+        };
+    }
+}

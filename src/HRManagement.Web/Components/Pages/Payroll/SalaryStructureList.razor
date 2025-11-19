@@ -1,0 +1,172 @@
+@page "/payroll/salary-structures"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IPayrollService PayrollService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Salary Structures</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>Salary Structures</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="/payroll/salary-structures/create" class="btn btn-primary">
+                <span class="oi oi-plus"></span> Create Structure
+            </a>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading salary structures...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else if (structures != null && structures.Items.Any())
+    {
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Structure Name</th>
+                            <th>Basic Salary</th>
+                            <th>Components</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var structure in structures.Items)
+                        {
+                            <tr>
+                                <td><strong>@structure.StructureName</strong></td>
+                                <td>@structure.BasicSalary.ToString("C")</td>
+                                <td>
+                                    @if (structure.SalaryComponents != null)
+                                    {
+                                        <span class="badge bg-info">@structure.SalaryComponents.Count components</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge" style="background-color: @GetStatusColor(structure.IsActive)">
+                                        @(structure.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="/payroll/salary-structures/edit/@structure.SalaryStructureId" class="btn btn-sm btn-warning">Edit</a>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteStructure(structure.SalaryStructureId)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <nav aria-label="Page navigation" class="mt-3">
+                    <ul class="pagination">
+                        @if (structures.HasPreviousPage)
+                        {
+                            <li class="page-item">
+                                <button class="page-link" @onclick="() => LoadPage(structures.PageNumber - 1)">
+                                    Previous
+                                </button>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                        }
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page @structures.PageNumber of @structures.TotalPages
+                            </span>
+                        </li>
+
+                        @if (structures.HasNextPage)
+                        {
+                            <li class="page-item">
+                                <button class="page-link" @onclick="() => LoadPage(structures.PageNumber + 1)">
+                                    Next
+                                </button>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">No salary structures found.</div>
+    }
+</div>
+
+@code {
+    private PagedResponse<SalaryStructureDto>? structures;
+    private bool loading = true;
+    private string? error;
+    private int currentPage = 1;
+    private const long OrganizationId = 1; // In production, get from auth/context
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPage(1);
+    }
+
+    private async Task LoadPage(int pageNumber)
+    {
+        try
+        {
+            loading = true;
+            error = null;
+            structures = await PayrollService.GetAllSalaryStructuresAsync(OrganizationId, pageNumber, 10);
+            currentPage = pageNumber;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task DeleteStructure(long structureId)
+    {
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this salary structure?"))
+            return;
+
+        try
+        {
+            await PayrollService.DeleteSalaryStructureAsync(structureId);
+            await LoadPage(currentPage);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private string GetStatusColor(bool isActive)
+    {
+        return isActive ? "#28a745" : "#6c757d";
+    }
+
+    @inject IJSRuntime JSRuntime
+}

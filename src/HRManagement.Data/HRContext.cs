@@ -38,8 +38,16 @@ namespace HRManagement.Data
         // DbSets for Contracts module
         public DbSet<Contract> Contracts { get; set; }
 
+        // DbSets for Payroll & Compensation module
+        public DbSet<SalaryStructure> SalaryStructures { get; set; }
+        public DbSet<SalaryComponent> SalaryComponents { get; set; }
+        public DbSet<EmployeeSalary> EmployeeSalaries { get; set; }
+        public DbSet<Payroll> Payrolls { get; set; }
+        public DbSet<PayrollDetail> PayrollDetails { get; set; }
+        public DbSet<SalarySlip> SalarySlips { get; set; }
+        public DbSet<SalarySlipComponent> SalarySlipComponents { get; set; }
+
         // Future modules will add more DbSets here
-        // - Payroll (PayrollRun, PaySlip, Salary)
         // - Benefits, Training, etc.
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -324,6 +332,97 @@ namespace HRManagement.Data
                 .OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<Contract>()
                 .HasIndex(c => new { c.EmployeeId, c.ContractType });
+
+            // SalaryStructure
+            modelBuilder.Entity<SalaryStructure>()
+                .HasKey(ss => ss.SalaryStructureId);
+            modelBuilder.Entity<SalaryStructure>()
+                .HasOne(ss => ss.Organization)
+                .WithMany()
+                .HasForeignKey(ss => ss.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SalaryStructure>()
+                .HasIndex(ss => new { ss.OrganizationId, ss.StructureName })
+                .IsUnique();
+
+            // SalaryComponent
+            modelBuilder.Entity<SalaryComponent>()
+                .HasKey(sc => sc.SalaryComponentId);
+            modelBuilder.Entity<SalaryComponent>()
+                .HasOne(sc => sc.SalaryStructure)
+                .WithMany(ss => ss.SalaryComponents)
+                .HasForeignKey(sc => sc.SalaryStructureId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // EmployeeSalary
+            modelBuilder.Entity<EmployeeSalary>()
+                .HasKey(es => es.EmployeeSalaryId);
+            modelBuilder.Entity<EmployeeSalary>()
+                .HasOne(es => es.Employee)
+                .WithMany()
+                .HasForeignKey(es => es.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<EmployeeSalary>()
+                .HasOne(es => es.SalaryStructure)
+                .WithMany(ss => ss.EmployeeSalaries)
+                .HasForeignKey(es => es.SalaryStructureId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EmployeeSalary>()
+                .HasIndex(es => new { es.EmployeeId, es.IsActive });
+
+            // Payroll
+            modelBuilder.Entity<Payroll>()
+                .HasKey(p => p.PayrollId);
+            modelBuilder.Entity<Payroll>()
+                .HasOne(p => p.Organization)
+                .WithMany()
+                .HasForeignKey(p => p.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Payroll>()
+                .HasIndex(p => new { p.OrganizationId, p.Status });
+
+            // PayrollDetail
+            modelBuilder.Entity<PayrollDetail>()
+                .HasKey(pd => pd.PayrollDetailId);
+            modelBuilder.Entity<PayrollDetail>()
+                .HasOne(pd => pd.Payroll)
+                .WithMany(p => p.PayrollDetails)
+                .HasForeignKey(pd => pd.PayrollId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PayrollDetail>()
+                .HasOne(pd => pd.Employee)
+                .WithMany()
+                .HasForeignKey(pd => pd.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PayrollDetail>()
+                .HasIndex(pd => new { pd.PayrollId, pd.EmployeeId })
+                .IsUnique();
+
+            // SalarySlip
+            modelBuilder.Entity<SalarySlip>()
+                .HasKey(ss => ss.SalarySlipId);
+            modelBuilder.Entity<SalarySlip>()
+                .HasOne(ss => ss.PayrollDetail)
+                .WithMany(pd => pd.SalarySlips)
+                .HasForeignKey(ss => ss.PayrollDetailId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<SalarySlip>()
+                .HasOne(ss => ss.Employee)
+                .WithMany()
+                .HasForeignKey(ss => ss.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SalarySlip>()
+                .HasIndex(ss => ss.SlipNumber)
+                .IsUnique();
+
+            // SalarySlipComponent
+            modelBuilder.Entity<SalarySlipComponent>()
+                .HasKey(ssc => ssc.SalarySlipComponentId);
+            modelBuilder.Entity<SalarySlipComponent>()
+                .HasOne(ssc => ssc.SalarySlip)
+                .WithMany(ss => ss.SalarySlipComponents)
+                .HasForeignKey(ssc => ssc.SalarySlipId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

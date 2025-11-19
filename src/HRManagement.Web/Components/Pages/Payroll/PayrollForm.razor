@@ -1,0 +1,178 @@
+@page "/payroll/payroll-runs/create"
+@page "/payroll/payroll-runs/edit/{PayrollId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IPayrollService PayrollService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(PayrollId == 0 ? "Create Payroll Run" : "Edit Payroll Run")</PageTitle>
+
+<div class="container mt-4">
+    <h2>@(PayrollId == 0 ? "Create New Payroll Run" : "Edit Payroll Run")</h2>
+
+    @if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading...</div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Payroll Name *</label>
+                                <input type="text" class="form-control" id="name"
+                                       @bind="model.PayrollName" placeholder="e.g., January 2024 Payroll" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="frequency" class="form-label">Frequency *</label>
+                                <select class="form-control" id="frequency" @bind="model.PayrollFrequency">
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Bi-weekly">Bi-weekly</option>
+                                    <option value="Weekly">Weekly</option>
+                                    <option value="Quarterly">Quarterly</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="startDate" class="form-label">Start Date *</label>
+                                <input type="date" class="form-control" id="startDate"
+                                       @bind="model.StartDate" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="endDate" class="form-label">End Date *</label>
+                                <input type="date" class="form-control" id="endDate"
+                                       @bind="model.EndDate" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="remarks" class="form-label">Remarks</label>
+                        <textarea class="form-control" id="remarks" rows="3"
+                                  @bind="model.Remarks" placeholder="Enter remarks..."></textarea>
+                    </div>
+
+                    @if (PayrollId != 0 && editModel != null)
+                    {
+                        <div class="alert alert-info">
+                            <strong>Status:</strong> @editModel.Status
+                        </div>
+                    }
+
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-primary me-2" disabled="@submitting">
+                            @(submitting ? "Saving..." : "Save")
+                        </button>
+                        <a href="/payroll/payroll-runs" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long PayrollId { get; set; }
+
+    private CreatePayrollRequest model = new();
+    private UpdatePayrollRequest? editModel;
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+    private const long OrganizationId = 1; // In production, get from auth/context
+
+    protected override async Task OnInitializedAsync()
+    {
+        model.OrganizationId = OrganizationId;
+
+        if (PayrollId != 0)
+        {
+            try
+            {
+                loading = true;
+                var payroll = await PayrollService.GetPayrollByIdAsync(PayrollId);
+                if (payroll != null)
+                {
+                    model = new CreatePayrollRequest
+                    {
+                        OrganizationId = payroll.OrganizationId,
+                        PayrollName = payroll.PayrollName,
+                        PayrollFrequency = payroll.PayrollFrequency,
+                        StartDate = payroll.StartDate,
+                        EndDate = payroll.EndDate,
+                        Remarks = payroll.Remarks
+                    };
+                    editModel = new UpdatePayrollRequest
+                    {
+                        PayrollName = payroll.PayrollName,
+                        PayrollFrequency = payroll.PayrollFrequency,
+                        StartDate = payroll.StartDate,
+                        EndDate = payroll.EndDate,
+                        Status = payroll.Status,
+                        Remarks = payroll.Remarks
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+        else
+        {
+            model.StartDate = DateTime.Today;
+            model.EndDate = DateTime.Today.AddDays(30);
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            if (PayrollId == 0)
+            {
+                await PayrollService.CreatePayrollAsync(model);
+            }
+            else if (editModel != null)
+            {
+                await PayrollService.UpdatePayrollAsync(PayrollId, editModel);
+            }
+
+            NavigationManager.NavigateTo("/payroll/payroll-runs");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+}

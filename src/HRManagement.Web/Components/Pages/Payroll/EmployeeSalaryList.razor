@@ -1,0 +1,152 @@
+@page "/payroll/employee-salaries"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IPayrollService PayrollService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Employee Salaries</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>Employee Salaries</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="/payroll/employee-salaries/create" class="btn btn-primary">
+                <span class="oi oi-plus"></span> Assign Salary
+            </a>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="alert alert-info">Loading employee salaries...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @error
+        </div>
+    }
+    else if (salaries != null && salaries.Items.Any())
+    {
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Employee Name</th>
+                            <th>Salary Structure</th>
+                            <th>Gross Salary</th>
+                            <th>Net Salary</th>
+                            <th>Effective Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var salary in salaries.Items)
+                        {
+                            <tr>
+                                <td><strong>@salary.EmployeeName</strong></td>
+                                <td>@salary.SalaryStructureName</td>
+                                <td>@salary.GrossSalary.ToString("C")</td>
+                                <td>@salary.NetSalary.ToString("C")</td>
+                                <td>@salary.EffectiveDate.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    <span class="badge" style="background-color: @GetStatusColor(salary.IsActive)">
+                                        @(salary.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="/payroll/employee-salaries/edit/@salary.EmployeeSalaryId" class="btn btn-sm btn-warning">Edit</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <nav aria-label="Page navigation" class="mt-3">
+                    <ul class="pagination">
+                        @if (salaries.HasPreviousPage)
+                        {
+                            <li class="page-item">
+                                <button class="page-link" @onclick="() => LoadPage(salaries.PageNumber - 1)">
+                                    Previous
+                                </button>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                        }
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page @salaries.PageNumber of @salaries.TotalPages
+                            </span>
+                        </li>
+
+                        @if (salaries.HasNextPage)
+                        {
+                            <li class="page-item">
+                                <button class="page-link" @onclick="() => LoadPage(salaries.PageNumber + 1)">
+                                    Next
+                                </button>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">No employee salaries found.</div>
+    }
+</div>
+
+@code {
+    private PagedResponse<EmployeeSalaryDto>? salaries;
+    private bool loading = true;
+    private string? error;
+    private int currentPage = 1;
+    private const long OrganizationId = 1; // In production, get from auth/context
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPage(1);
+    }
+
+    private async Task LoadPage(int pageNumber)
+    {
+        try
+        {
+            loading = true;
+            error = null;
+            salaries = await PayrollService.GetAllEmployeeSalariesAsync(OrganizationId, pageNumber, 10);
+            currentPage = pageNumber;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string GetStatusColor(bool isActive)
+    {
+        return isActive ? "#28a745" : "#6c757d";
+    }
+}

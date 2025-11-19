@@ -78,6 +78,7 @@ try
     builder.Services.AddScoped<ISkillsService, SkillsService>();
     builder.Services.AddScoped<IContractsService, ContractsService>();
     builder.Services.AddScoped<ILeaveService, LeaveService>();
+    builder.Services.AddScoped<IPayrollService, PayrollService>();
 
     var app = builder.Build();
 
