@@ -40,7 +40,7 @@ try
 
     // Add HRContext for HR Management
     builder.Services.AddDbContext<HRContext>(options =>
-        options.UseSqlServer(connectionString));
+        options.UseSqlite(connectionString));
 
     // Keep ApplicationDbContext for Identity (using Sqlite)
     var identityConnectionString = builder.Configuration.GetConnectionString("IdentityConnection") ?? "Data Source=app.db";
