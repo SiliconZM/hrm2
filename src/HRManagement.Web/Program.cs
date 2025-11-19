@@ -88,11 +88,21 @@ try
     {
         app.UseMigrationsEndPoint();
 
-        // Seed payroll data for testing
-        using (var scope = app.Services.CreateScope())
+        // Apply migrations and seed payroll data for testing
+        try
         {
-            var hrContext = scope.ServiceProvider.GetRequiredService<HRContext>();
-            await PayrollSeeder.SeedPayrollDataAsync(hrContext);
+            using (var scope = app.Services.CreateScope())
+            {
+                var hrContext = scope.ServiceProvider.GetRequiredService<HRContext>();
+                // Apply pending migrations
+                await hrContext.Database.MigrateAsync();
+                // Seed payroll data after migrations
+                await PayrollSeeder.SeedPayrollDataAsync(hrContext);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error during database migration or seeding");
         }
     }
     else

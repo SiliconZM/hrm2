@@ -10,10 +10,13 @@ namespace HRManagement.Data.Seeders
             try
             {
                 // Check if data already exists
-                if (await context.SalaryStructures.AnyAsync())
+                if (await context.SalaryStructures.AnyAsync() || await context.Payrolls.AnyAsync())
                 {
                     return; // Data already seeded
                 }
+
+                // Disable foreign key constraint temporarily to avoid issues during seeding
+                await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF");
 
                 // Get sample organization (assumed to exist from phase 1)
                 var organization = await context.Organizations.FirstOrDefaultAsync(o => o.OrganizationId == 1);
@@ -48,6 +51,10 @@ namespace HRManagement.Data.Seeders
                 };
                 context.SalaryStructures.Add(salaryStructure);
                 await context.SaveChangesAsync();
+
+                // Refresh to get the ID
+                salaryStructure = await context.SalaryStructures
+                    .FirstAsync(ss => ss.StructureName == "Standard Zambian Salary Structure 2024");
 
                 // Create Salary Components (Zambian Context)
                 var components = new List<SalaryComponent>
@@ -458,6 +465,9 @@ namespace HRManagement.Data.Seeders
                     context.SalarySlipComponents.AddRange(slipComponents);
                     await context.SaveChangesAsync();
                 }
+
+                // Re-enable foreign key constraints
+                await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = ON");
             }
             catch (Exception ex)
             {
