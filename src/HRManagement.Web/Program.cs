@@ -2,10 +2,14 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using AutoMapper;
 using HRManagement.Web.Components;
 using HRManagement.Web.Components.Account;
 using HRManagement.Web.Data;
 using HRManagement.Data;
+using HRManagement.Services.Interfaces;
+using HRManagement.Services.Implementations;
+using HRManagement.Services.Mappings;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -58,6 +62,17 @@ try
         .AddDefaultTokenProviders();
 
     builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+
+    // Register AutoMapper - register services assembly directly
+    builder.Services.AddScoped<HRManagement.Services.Mappings.MappingProfile>();
+    var mapperConfig = new AutoMapper.MapperConfiguration(mc =>
+    {
+        mc.AddProfile(new HRManagement.Services.Mappings.MappingProfile());
+    });
+    builder.Services.AddSingleton(mapperConfig.CreateMapper());
+
+    // Register business services
+    builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 
     var app = builder.Build();
 
