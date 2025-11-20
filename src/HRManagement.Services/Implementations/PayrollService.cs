@@ -898,10 +898,11 @@ namespace HRManagement.Services.Implementations
             if (slip == null)
                 throw new InvalidOperationException($"Salary slip {salarySlipId} not found");
 
-            // PDF generation would require a library like iTextSharp or SelectPdf
-            // For now, returning empty byte array as placeholder
-            // In production, implement actual PDF generation here
-            return Array.Empty<byte>();
+            // Map to DTO
+            var slipDto = _mapper.Map<SalarySlipDto>(slip);
+            
+            // Generate PDF using SalarySlipPdfGenerator
+            return SalarySlipPdfGenerator.Generate(slipDto);
         }
 
         #endregion
