@@ -4,6 +4,7 @@ using HRManagement.Models.DTOs;
 using HRManagement.Models.Entities;
 using HRManagement.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using HRManagement.Services.Validations;
 
 namespace HRManagement.Services.Implementations
 {
@@ -14,15 +15,22 @@ namespace HRManagement.Services.Implementations
         private readonly ILeaveService _leaveService;
         private readonly IBenefitsService _benefitsService;
         private readonly ITaxService _taxService;
+        private readonly PayrollValidationService _validationService;
 
-        public PayrollService(HRContext context, IMapper mapper, ILeaveService leaveService,
-            IBenefitsService benefitsService, ITaxService taxService)
+        public PayrollService(
+            HRContext context,
+            IMapper mapper,
+            ILeaveService leaveService,
+            IBenefitsService benefitsService,
+            ITaxService taxService,
+            PayrollValidationService validationService)
         {
             _context = context;
             _mapper = mapper;
             _leaveService = leaveService;
             _benefitsService = benefitsService;
             _taxService = taxService;
+            _validationService = validationService;
         }
 
         #region Salary Structure Management

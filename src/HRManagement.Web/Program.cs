@@ -11,6 +11,7 @@ using HRManagement.Data.Seeders;
 using HRManagement.Services.Interfaces;
 using HRManagement.Services.Implementations;
 using HRManagement.Services.Mappings;
+using HRManagement.Services.Validations;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -81,6 +82,7 @@ try
     builder.Services.AddScoped<ILeaveService, LeaveService>();
     builder.Services.AddScoped<ITaxService, TaxService>();
     builder.Services.AddScoped<IPayrollService, PayrollService>();
+    builder.Services.AddScoped<PayrollValidationService>();
     builder.Services.AddScoped<IBenefitsService, BenefitsService>();
 
     var app = builder.Build();
