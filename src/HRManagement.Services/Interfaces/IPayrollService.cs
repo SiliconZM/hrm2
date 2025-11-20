@@ -50,6 +50,11 @@ namespace HRManagement.Services.Interfaces
         Task<decimal> CalculatePayrollDetailSalaryAsync(long payrollDetailId);
         #endregion
 
+        #region Batch Operations
+        Task<int> GeneratePayrollDetailsForAllAsync(long payrollId, int? workingDays = null);
+        Task<int> RecalculatePayrollDetailsAsync(long payrollId);
+        #endregion
+
         #region Salary Slip Management
         Task<SalarySlipDto> GetSalarySlipByIdAsync(long salarySlipId);
         Task<List<SalarySlipDto>> GetSalarySlipsByEmployeeAsync(long employeeId, int year);

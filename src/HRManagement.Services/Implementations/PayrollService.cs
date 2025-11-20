@@ -1091,5 +1091,143 @@ namespace HRManagement.Services.Implementations
         #endregion
 
         #endregion
+
+        #region Batch Operations
+
+        /// <summary>
+        /// Generates payroll details for all active employees with active salaries for a payroll run
+        /// </summary>
+        public async Task<int> GeneratePayrollDetailsForAllAsync(long payrollId, int? workingDays = null)
+        {
+            try
+            {
+                var payroll = await _context.Payrolls.FindAsync(payrollId);
+                if (payroll == null)
+                    throw new InvalidOperationException("Payroll not found");
+
+                var org = await _context.Organizations.FindAsync(payroll.OrganizationId);
+                if (org == null)
+                    throw new InvalidOperationException("Organization not found");
+
+                // Get all active employees with active salaries
+                var employeesWithSalaries = await _context.EmployeeSalaries
+                    .Where(es => es.IsActive
+                        && (!es.EndDate.HasValue || es.EndDate > DateTime.UtcNow)
+                        && es.EffectiveDate <= DateTime.UtcNow
+                        && es.Employee!.OrganizationId == payroll.OrganizationId)
+                    .Include(es => es.Employee)
+                    .ToListAsync();
+
+                int count = 0;
+
+                // Create payroll details for each employee
+                foreach (var employeeSalary in employeesWithSalaries)
+                {
+                    // Check if payroll detail already exists
+                    var existingDetail = await _context.PayrollDetails
+                        .FirstOrDefaultAsync(pd => pd.PayrollId == payrollId && pd.EmployeeId == employeeSalary.EmployeeId);
+
+                    if (existingDetail != null)
+                        continue; // Skip if already exists
+
+                    var request = new CreatePayrollDetailRequest
+                    {
+                        PayrollId = payrollId,
+                        EmployeeId = employeeSalary.EmployeeId,
+                        WorkingDays = workingDays,
+                        DaysWorked = workingDays,
+                        Remarks = "Generated via batch operation"
+                    };
+
+                    await CreatePayrollDetailAsync(request);
+                    count++;
+                }
+
+                return count;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Recalculates all payroll details for a specific payroll run
+        /// </summary>
+        public async Task<int> RecalculatePayrollDetailsAsync(long payrollId)
+        {
+            try
+            {
+                var payroll = await _context.Payrolls.FindAsync(payrollId);
+                if (payroll == null)
+                    throw new InvalidOperationException("Payroll not found");
+
+                var payrollDetails = await _context.PayrollDetails
+                    .Where(pd => pd.PayrollId == payrollId)
+                    .Include(pd => pd.Employee)
+                    .ToListAsync();
+
+                int count = 0;
+
+                foreach (var detail in payrollDetails)
+                {
+                    // Recalculate the payroll detail salary
+                    var salaryAmount = await CalculatePayrollDetailSalaryAsync(detail.PayrollDetailId);
+
+                    // Update the payroll detail with recalculated values
+                    var employeeSalary = await _context.EmployeeSalaries
+                        .FirstOrDefaultAsync(es => es.EmployeeId == detail.EmployeeId && es.IsActive);
+
+                    if (employeeSalary == null)
+                        continue;
+
+                    // Update with recalculated values
+                    var grossSalary = employeeSalary.OverrideBasicSalary ?? employeeSalary.SalaryStructure!.BasicSalary;
+
+                    // Recalculate leave deductions
+                    decimal leaveDeduction = 0;
+                    leaveDeduction = await CalculateLeavesDeductionAsync(
+                        detail.EmployeeId,
+                        payroll.StartDate,
+                        payroll.EndDate,
+                        grossSalary,
+                        employeeSalary.SalaryStructure!
+                    );
+
+                    // Recalculate benefit deductions
+                    decimal benefitDeduction = await CalculateBenefitDeductionsAsync(
+                        detail.EmployeeId,
+                        DateTime.UtcNow
+                    );
+
+                    // Recalculate tax
+                    decimal totalTax = 0;
+                    var activeTaxConfig = await _taxService.GetActiveTaxConfigurationAsync(payroll.OrganizationId);
+                    if (activeTaxConfig != null)
+                    {
+                        totalTax = await _taxService.CalculateIncomeTaxAsync(activeTaxConfig.TaxConfigurationId, grossSalary);
+                    }
+
+                    detail.GrossSalary = grossSalary;
+                    detail.TotalDeductions = leaveDeduction + benefitDeduction + totalTax;
+                    detail.TotalTax = totalTax;
+                    detail.NetSalary = grossSalary - detail.TotalDeductions;
+
+                    _context.PayrollDetails.Update(detail);
+                    count++;
+                }
+
+                await _context.SaveChangesAsync();
+                return count;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        #endregion
+
     }
 }
+
