@@ -59,8 +59,17 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <a href="/payroll/payroll-runs/edit/@payroll.PayrollId" class="btn btn-sm btn-warning">Edit</a>
-                                    <button class="btn btn-sm btn-danger" @onclick="() => DeletePayroll(payroll.PayrollId)">Delete</button>
+                                    <a href="/payroll/payroll-runs/edit/@payroll.PayrollId" class="btn btn-sm btn-warning me-1">Edit</a>
+                                    <a href="/payroll/payroll-runs/@payroll.PayrollId/process" class="btn btn-sm btn-info me-1">Process</a>
+                                    @if (confirmDeleteId == payroll.PayrollId)
+                                    {
+                                        <button class="btn btn-sm btn-danger me-1" @onclick="@(() => ConfirmDeletePayroll(payroll.PayrollId))" disabled="@(deletingId == payroll.PayrollId)">Confirm</button>
+                                        <button class="btn btn-sm btn-secondary" @onclick="CancelDelete">Cancel</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-danger" @onclick="@(() => InitiateDelete(payroll.PayrollId))">Delete</button>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -120,9 +129,9 @@
     private bool loading = true;
     private string? error;
     private int currentPage = 1;
-    private const long OrganizationId = 1; // In production, get from auth/context
-
-    @inject IJSRuntime JSRuntime
+    private const long OrganizationId = 1;
+    private long confirmDeleteId = 0;
+    private long deletingId = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -148,19 +157,32 @@
         }
     }
 
-    private async Task DeletePayroll(long payrollId)
+    private void InitiateDelete(long payrollId)
     {
-        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this payroll run?"))
-            return;
+        confirmDeleteId = payrollId;
+    }
 
+    private void CancelDelete()
+    {
+        confirmDeleteId = 0;
+    }
+
+    private async Task ConfirmDeletePayroll(long payrollId)
+    {
         try
         {
+            deletingId = payrollId;
             await PayrollService.DeletePayrollAsync(payrollId);
+            confirmDeleteId = 0;
             await LoadPage(currentPage);
         }
         catch (Exception ex)
         {
             error = ex.Message;
+        }
+        finally
+        {
+            deletingId = 0;
         }
     }
 

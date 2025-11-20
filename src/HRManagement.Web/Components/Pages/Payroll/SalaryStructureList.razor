@@ -60,7 +60,8 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <a href="/payroll/salary-structures/edit/@structure.SalaryStructureId" class="btn btn-sm btn-warning">Edit</a>
+                                    <a href="/payroll/salary-structures/edit/@structure.SalaryStructureId" class="btn btn-sm btn-warning me-1">Edit</a>
+                                    <a href="/payroll/salary-structures/@structure.SalaryStructureId/components" class="btn btn-sm btn-info me-1">Components</a>
                                     <button class="btn btn-sm btn-danger" @onclick="() => DeleteStructure(structure.SalaryStructureId)">Delete</button>
                                 </td>
                             </tr>

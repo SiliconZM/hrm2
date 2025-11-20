@@ -43,6 +43,7 @@ namespace HRManagement.Models.DTOs
         public bool IsPercentageBased { get; set; }
         public bool IsActive { get; set; }
         public int DisplayOrder { get; set; }
+        public string? Description { get; set; }
     }
 
     public class CreateSalaryComponentRequest
@@ -55,6 +56,7 @@ namespace HRManagement.Models.DTOs
         public bool IsTaxable { get; set; }
         public bool IsPercentageBased { get; set; }
         public int DisplayOrder { get; set; }
+        public string? Description { get; set; }
     }
 
     public class UpdateSalaryComponentRequest
@@ -67,6 +69,7 @@ namespace HRManagement.Models.DTOs
         public bool IsPercentageBased { get; set; }
         public bool IsActive { get; set; }
         public int DisplayOrder { get; set; }
+        public string? Description { get; set; }
     }
 
     // EmployeeSalary DTOs

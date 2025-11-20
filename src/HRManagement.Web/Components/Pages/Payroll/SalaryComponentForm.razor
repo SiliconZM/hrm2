@@ -1,0 +1,274 @@
+@page "/payroll/salary-structures/{StructureId:long}/components/create"
+@page "/payroll/salary-structures/{StructureId:long}/components/edit/{ComponentId:long}"
+@using HRManagement.Models.DTOs
+@using HRManagement.Services.Interfaces
+@inject IPayrollService PayrollService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(ComponentId == 0 ? "Add Salary Component" : "Edit Salary Component")</PageTitle>
+
+<div class="container mt-4">
+    <h2>@(ComponentId == 0 ? "Add New Salary Component" : "Edit Salary Component")</h2>
+
+    @if (error != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Error:</strong> @error
+            <button type="button" class="btn-close" @onclick="@(() => error = null)"></button>
+        </div>
+    }
+
+    @if (loading)
+    {
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Loading...
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="HandleSubmit">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Component Name *</label>
+                                <input type="text" class="form-control" id="name"
+                                       @bind="model.ComponentName" placeholder="e.g., Basic Salary, HRA, Tax" />
+                                <small class="text-muted">Unique name for this salary component</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="type" class="form-label">Component Type *</label>
+                                <select class="form-select" id="type" @bind="model.ComponentType">
+                                    <option value="">-- Select Type --</option>
+                                    <option value="Earning">Earning (Added to Gross)</option>
+                                    <option value="Deduction">Deduction (Subtracted from Gross)</option>
+                                    <option value="Tax">Tax (Calculated separately)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="isPercentage"
+                                           @bind="model.IsPercentageBased" />
+                                    <label class="form-check-label" for="isPercentage">
+                                        Based on Percentage (%)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="amount" class="form-label">
+                                    @(model.IsPercentageBased ? "Percentage (%)" : "Fixed Amount")
+                                </label>
+                                @if (model.IsPercentageBased)
+                                {
+                                    <input type="number" class="form-control" id="amount"
+                                           @bind="percentageValue"
+                                           step="0.01" min="0" max="100"
+                                           placeholder="10.50" />
+                                    <small class="text-muted">Enter percentage value (e.g., 10 for 10%)</small>
+                                }
+                                else
+                                {
+                                    <input type="number" class="form-control" id="amount"
+                                           @bind="amountValue"
+                                           step="0.01" min="0"
+                                           placeholder="5000.00" />
+                                    <small class="text-muted">Enter fixed amount (e.g., 5000)</small>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="order" class="form-label">Display Order</label>
+                                <input type="number" class="form-control" id="order"
+                                       @bind="model.DisplayOrder" min="0" placeholder="0" />
+                                <small class="text-muted">Order in which components appear (lower numbers first)</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="3"
+                                  @bind="model.Description"
+                                  placeholder="Enter description (optional)..."></textarea>
+                    </div>
+
+                    @if (ComponentId != 0)
+                    {
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="isActive"
+                                       @bind="isActive" />
+                                <label class="form-check-label" for="isActive">
+                                    Active
+                                </label>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="alert alert-info">
+                        <h6>Component Calculation:</h6>
+                        <ul class="mb-0">
+                            <li><strong>Earning:</strong> Adds to gross salary</li>
+                            <li><strong>Deduction:</strong> Subtracts from gross salary</li>
+                            <li><strong>Tax:</strong> Calculated separately and deducted</li>
+                        </ul>
+                    </div>
+
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-primary me-2" disabled="@(submitting || string.IsNullOrWhiteSpace(model.ComponentName))">
+                            @(submitting ? "Saving..." : "Save Component")
+                        </button>
+                        <a href="@($"/payroll/salary-structures/{StructureId}/components")" class="btn btn-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long StructureId { get; set; }
+
+    [Parameter]
+    public long ComponentId { get; set; }
+
+    private CreateSalaryComponentRequest model = new();
+    private decimal amountValue = 0;
+    private decimal? percentageValue = 0;
+    private bool isActive = true;
+    private bool loading = false;
+    private bool submitting = false;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (ComponentId != 0)
+        {
+            try
+            {
+                loading = true;
+                var component = await PayrollService.GetSalaryComponentByIdAsync(ComponentId);
+                if (component != null)
+                {
+                    model = new CreateSalaryComponentRequest
+                    {
+                        SalaryStructureId = component.SalaryStructureId,
+                        ComponentName = component.ComponentName,
+                        ComponentType = component.ComponentType,
+                        Description = component.Description,
+                        Amount = component.Amount,
+                        Percentage = component.Percentage,
+                        IsPercentageBased = component.IsPercentageBased,
+                        DisplayOrder = component.DisplayOrder
+                    };
+                    amountValue = component.Amount;
+                    percentageValue = component.Percentage;
+                    isActive = component.IsActive;
+                }
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
+        else
+        {
+            model.SalaryStructureId = StructureId;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            submitting = true;
+            error = null;
+
+            // Validation
+            if (string.IsNullOrWhiteSpace(model.ComponentName))
+            {
+                error = "Component name is required";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(model.ComponentType))
+            {
+                error = "Component type is required";
+                return;
+            }
+
+            if (model.IsPercentageBased)
+            {
+                if (!percentageValue.HasValue || percentageValue.Value <= 0 || percentageValue.Value > 100)
+                {
+                    error = "Percentage must be between 0 and 100";
+                    return;
+                }
+                model.Percentage = percentageValue;
+                model.Amount = 0; // Clear amount when using percentage
+            }
+            else
+            {
+                if (amountValue < 0)
+                {
+                    error = "Amount cannot be negative";
+                    return;
+                }
+                model.Amount = amountValue;
+                model.Percentage = null; // Clear percentage when using fixed amount
+            }
+
+            if (ComponentId == 0)
+            {
+                await PayrollService.CreateSalaryComponentAsync(model);
+            }
+            else
+            {
+                var updateRequest = new UpdateSalaryComponentRequest
+                {
+                    ComponentName = model.ComponentName,
+                    ComponentType = model.ComponentType,
+                    Description = model.Description,
+                    Amount = model.Amount,
+                    Percentage = model.Percentage,
+                    IsPercentageBased = model.IsPercentageBased,
+                    DisplayOrder = model.DisplayOrder,
+                    IsActive = isActive
+                };
+                await PayrollService.UpdateSalaryComponentAsync(ComponentId, updateRequest);
+            }
+
+            NavigationManager.NavigateTo($"/payroll/salary-structures/{StructureId}/components");
+        }
+        catch (Exception ex)
+        {
+            error = $"Error saving component: {ex.Message}";
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+}
