@@ -1,0 +1,26 @@
+
+            // Tax Configuration mappings
+            CreateMap<TaxConfiguration, TaxConfigurationDto>();
+            CreateMap<CreateTaxConfigurationRequest, TaxConfiguration>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.TaxConfigurationId, o => o.Ignore());
+
+            CreateMap<UpdateTaxConfigurationRequest, TaxConfiguration>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.TaxConfigurationId, o => o.Ignore())
+                .ForMember(d => d.OrganizationId, o => o.Ignore());
+
+            // Tax Slab mappings
+            CreateMap<TaxSlab, TaxSlabDto>();
+            CreateMap<CreateTaxSlabRequest, TaxSlab>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.TaxSlabId, o => o.Ignore());
+
+            CreateMap<UpdateTaxSlabRequest, TaxSlab>()
+                .ForMember(d => d.CreatedAt, o => o.Ignore())
+                .ForMember(d => d.UpdatedAt, o => o.Ignore())
+                .ForMember(d => d.TaxSlabId, o => o.Ignore())
+                .ForMember(d => d.TaxConfigurationId, o => o.Ignore());

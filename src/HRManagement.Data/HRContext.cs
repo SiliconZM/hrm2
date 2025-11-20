@@ -52,6 +52,9 @@ namespace HRManagement.Data
         public DbSet<BenefitPlan> BenefitPlans { get; set; }
         public DbSet<EmployeeBenefit> EmployeeBenefits { get; set; }
         public DbSet<BenefitDeduction> BenefitDeductions { get; set; }
+        // DbSets for Tax Management module
+        public DbSet<TaxConfiguration> TaxConfigurations { get; set; }
+        public DbSet<TaxSlab> TaxSlabs { get; set; }
 
         // Future modules will add more DbSets here
         // - Training, etc.
@@ -486,6 +489,29 @@ namespace HRManagement.Data
                 .OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<BenefitDeduction>()
                 .HasIndex(bd => bd.DeductionCode)
+                .IsUnique();
+            // TaxConfiguration
+            modelBuilder.Entity<TaxConfiguration>()
+                .HasKey(tc => tc.TaxConfigurationId);
+            modelBuilder.Entity<TaxConfiguration>()
+                .HasOne(tc => tc.Organization)
+                .WithMany()
+                .HasForeignKey(tc => tc.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<TaxConfiguration>()
+                .HasIndex(tc => new { tc.OrganizationId, tc.FinancialYear, tc.ConfigurationName })
+                .IsUnique();
+
+            // TaxSlab
+            modelBuilder.Entity<TaxSlab>()
+                .HasKey(ts => ts.TaxSlabId);
+            modelBuilder.Entity<TaxSlab>()
+                .HasOne(ts => ts.TaxConfiguration)
+                .WithMany(tc => tc.TaxSlabs)
+                .HasForeignKey(ts => ts.TaxConfigurationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<TaxSlab>()
+                .HasIndex(ts => new { ts.TaxConfigurationId, ts.FromAmount, ts.ToAmount })
                 .IsUnique();
         }
 

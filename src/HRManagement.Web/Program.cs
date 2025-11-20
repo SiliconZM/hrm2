@@ -79,6 +79,7 @@ try
     builder.Services.AddScoped<ISkillsService, SkillsService>();
     builder.Services.AddScoped<IContractsService, ContractsService>();
     builder.Services.AddScoped<ILeaveService, LeaveService>();
+    builder.Services.AddScoped<ITaxService, TaxService>();
     builder.Services.AddScoped<IPayrollService, PayrollService>();
     builder.Services.AddScoped<IBenefitsService, BenefitsService>();
 
